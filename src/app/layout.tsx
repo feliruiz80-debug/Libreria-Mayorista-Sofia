@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
+import { CartProvider } from "@/components/CartProvider";
 import { SiteHeader } from "@/components/SiteHeader";
 import "./globals.css";
 
@@ -16,7 +17,7 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Librería Mayorista Sofía",
   description:
-    "Aplicación web de catálogo, clientes y pedidos para Librería Mayorista Sofía.",
+    "Catálogo y pedidos para clientes de Librería Mayorista Sofía, con precios desde Google Sheets.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -25,9 +26,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="es"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="flex min-h-full flex-col bg-stone-50 text-stone-900">
-        <SiteHeader />
-        <main className="flex-1">{children}</main>
+      <body className="flex min-h-full flex-col bg-[#f7f4ef] text-[#1b1d21]">
+        <CartProvider>
+          <SiteHeader />
+          <main className="flex-1">{children}</main>
+        </CartProvider>
       </body>
     </html>
   );

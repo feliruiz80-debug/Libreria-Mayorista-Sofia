@@ -1,34 +1,25 @@
 # Librería Mayorista Sofía
 
-Aplicación web para catálogo, precios, clientes y pedidos de Librería Mayorista Sofía.
+App para que los clientes vean el catálogo y armen un pedido. Los productos, precios, stock y links se leen de una hoja pública de Google Sheets.
 
-Esta etapa deja **solo la estructura inicial**: no hay lógica de negocio, carrito real ni conexión con Google Sheets.
+## Qué puede hacer un cliente
 
-## Tecnología
+- Buscar productos por nombre, marca o código
+- Filtrar por sección y marca
+- Ver precio, presentación, stock y la ficha del sitio
+- Armar un pedido y copiarlo o enviarlo por WhatsApp
 
-| Capa | Elección | Motivo |
-| --- | --- | --- |
-| Framework | [Next.js](https://nextjs.org/) (App Router) | App web moderna, rutas por carpetas y despliegue nativo en Vercel |
-| Lenguaje | TypeScript | Tipos para productos, clientes y pedidos |
-| UI | React + [Tailwind CSS](https://tailwindcss.com/) | Componentes y estilos rápidos de mantener |
-| Datos (próximo) | Google Sheets (API) | Planificado; el cliente está vacío en `src/lib/sheets/client.ts` |
-| Hosting | [Vercel](https://vercel.com/) | Encaja con Next.js y con el repositorio de GitHub |
-| Control de versiones | GitHub | Rama, PR y conexión posterior a Vercel |
+Los pedidos se guardan en el navegador del cliente. La hoja se usa para leer el catálogo; para que los pedidos se escriban solos en Sheets hace falta una cuenta de servicio de Google, que esta etapa no incluye.
 
-## Estructura
+## Hoja
 
-```text
-src/
-  app/                 # Rutas: inicio, catálogo, clientes, carrito, pedidos
-  components/          # Encabezado y páginas placeholder
-  lib/
-    types.ts           # Modelos de dominio (aún sin uso)
-    sheets/client.ts   # Stub de Google Sheets
-```
+El catálogo piloto está en la pestaña **Catálogo**, con columnas Sección, Marca, Producto, Código, Presentación, Imagen, Precio, Stock y Link. Las pestañas **Secciones** y **Marcas** ordenan los filtros.
 
-Variables de entorno previstas (no completar todavía): ver `.env.example`.
+La hoja tiene que estar compartida como «Cualquier persona con el enlace puede ver». Si la columna Imagen tiene una URL, se usa esa foto. Si está vacía y Link apunta a la ficha del sitio, la app toma la foto de esa ficha.
 
-## Desarrollo local
+Para usar otra hoja, definí `GOOGLE_SHEETS_SPREADSHEET_ID` (ver `.env.example`).
+
+## Desarrollo
 
 Requisitos: Node.js 20 o superior.
 
@@ -43,18 +34,3 @@ Abrir [http://localhost:3000](http://localhost:3000).
 npm run lint
 npm run build
 ```
-
-## GitHub y Vercel
-
-1. El código vive en este repositorio de GitHub.
-2. En [Vercel](https://vercel.com/new), importar el repo `Libreria-Mayorista-Sofia`.
-3. Framework: Next.js (detección automática). Comando de build: `next build`.
-4. Las variables de Google Sheets se cargarán en Vercel cuando se implemente esa integración.
-
-## Próximos pasos (no incluidos ahora)
-
-- Catálogo de productos y precios
-- Clientes
-- Carrito y generación de pedidos
-- Lectura/escritura en Google Sheets
-- Publicación en producción en Vercel

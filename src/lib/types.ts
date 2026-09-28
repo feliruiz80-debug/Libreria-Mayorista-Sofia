@@ -1,21 +1,22 @@
-/**
- * Modelos de dominio previstos. Aún no hay persistencia ni lógica de negocio.
- */
-
 export type Product = {
   id: string;
-  sku: string;
+  section: string;
+  brand: string;
   name: string;
-  category?: string;
-  price: number;
-  stock?: number;
+  code: string;
+  presentation: string;
+  imageUrl: string | null;
+  price: number | null;
+  stockLabel: string;
+  available: boolean;
+  productUrl: string | null;
 };
 
-export type Customer = {
-  id: string;
-  name: string;
-  email?: string;
-  phone?: string;
+export type Catalog = {
+  products: Product[];
+  sections: string[];
+  brands: string[];
+  fetchedAt: string;
 };
 
 export type CartItem = {
@@ -23,10 +24,21 @@ export type CartItem = {
   quantity: number;
 };
 
+export type OrderLine = {
+  productId: string;
+  name: string;
+  code: string;
+  presentation: string;
+  unitPrice: number | null;
+  quantity: number;
+};
+
 export type Order = {
   id: string;
-  customerId: string;
-  items: CartItem[];
   createdAt: string;
-  status: "draft" | "submitted";
+  customerName: string;
+  businessName: string;
+  phone: string;
+  note: string;
+  items: OrderLine[];
 };

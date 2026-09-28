@@ -1,10 +1,16 @@
-import { PlaceholderPage } from "@/components/PlaceholderPage";
+import { CartView } from "@/components/CartView";
+import { getCatalog } from "@/lib/sheets/catalog";
 
-export default function CarritoPage() {
-  return (
-    <PlaceholderPage
-      title="Carrito"
-      description="Acá se armará el pedido antes de confirmarlo. Todavía no hay lógica de carrito."
-    />
-  );
+export const metadata = {
+  title: "Pedido · Librería Mayorista Sofía",
+};
+
+export default async function CarritoPage() {
+  let products: Awaited<ReturnType<typeof getCatalog>>["products"] = [];
+  try {
+    products = (await getCatalog()).products;
+  } catch {
+    products = [];
+  }
+  return <CartView products={products} />;
 }

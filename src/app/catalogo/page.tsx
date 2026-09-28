@@ -1,10 +1,19 @@
-import { PlaceholderPage } from "@/components/PlaceholderPage";
+import { Suspense } from "react";
+import { CatalogBrowser } from "@/components/CatalogBrowser";
+import { CatalogStatus } from "@/components/CatalogStatus";
+import { loadCatalogResult } from "@/lib/sheets/catalog";
 
-export default function CatalogoPage() {
+export const metadata = {
+  title: "Catálogo · Librería Mayorista Sofía",
+};
+
+export default async function CatalogoPage() {
+  const result = await loadCatalogResult();
+  if (!result.ok) return <CatalogStatus message={result.message} />;
+
   return (
-    <PlaceholderPage
-      title="Catálogo"
-      description="Acá se listarán productos y precios. Todavía no hay datos ni conexión con Google Sheets."
-    />
+    <Suspense fallback={<p className="px-6 py-10 text-sm text-[#6f675f]">Cargando catálogo…</p>}>
+      <CatalogBrowser catalog={result.catalog} />
+    </Suspense>
   );
 }
