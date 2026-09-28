@@ -4,9 +4,9 @@ import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
 import { QuantityControl } from "@/components/QuantityControl";
 import { useCart } from "@/components/CartProvider";
-import { formatMoney, lineTotal } from "@/lib/format";
+import { formatMoney, lineTotal, parseAmount } from "@/lib/format";
 import { saveOrder } from "@/lib/orders-storage";
-import { openStoreWhatsApp, STORE_WHATSAPP_LABEL } from "@/lib/whatsapp";
+import { shareOrderPdf, STORE_WHATSAPP_LABEL } from "@/lib/whatsapp";
 import type { Order, Product } from "@/lib/types";
 
 export function CartView({ products }: { products: Product[] }) {
@@ -16,16 +16,26 @@ export function CartView({ products }: { products: Product[] }) {
   const [businessName, setBusinessName] = useState("");
   const [phone, setPhone] = useState("");
   const [note, setNote] = useState("");
+  const [delivery, setDelivery] = useState<"retiro" | "envio">("retiro");
+  const [address, setAddress] = useState("");
+  const [shippingCost, setShippingCost] = useState("");
   const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
   const [sending, setSending] = useState(false);
 
   const lines = items.map((item) => ({ item, product: byId.get(item.productId) }));
   const known = lines.filter((line) => line.product);
-  const total = known.every((line) => line.product?.price != null)
+  const subtotal = known.every((line) => line.product?.price != null)
     ? known.reduce((sum, line) => sum + (line.product?.price ?? 0) * line.item.quantity, 0)
     : null;
+  const parsedShipping = parseAmount(shippingCost);
+  const shippingAmount = delivery === "envio" && parsedShipping.ok ? parsedShipping.amount : null;
+  const payable =
+    subtotal == null || (delivery === "envio" && shippingAmount == null)
+      ? null
+      : subtotal + (delivery === "envio" ? (shippingAmount ?? 0) : 0);
 
-  function submit(event: FormEvent) {
+  async function submit(event: FormEvent) {
     event.preventDefault();
     if (!customerName.trim() || !phone.trim()) {
       setError("Completá el nombre y el teléfono para armar el pedido.");
@@ -35,7 +45,15 @@ export function CartView({ products }: { products: Product[] }) {
       setError("Agregá al menos un producto del catálogo.");
       return;
     }
-    setSending(true);
+    if (delivery === "envio" && !address.trim()) {
+      setError("Completá la dirección para el envío.");
+      return;
+    }
+    if (delivery === "envio" && !parsedShipping.ok) {
+      setError("El costo de envío no es un importe válido. Si todavía no está definido, dejalo vacío.");
+      return;
+    }
+
     const order: Order = {
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
@@ -43,6 +61,9 @@ export function CartView({ products }: { products: Product[] }) {
       businessName: businessName.trim(),
       phone: phone.trim(),
       note: note.trim(),
+      delivery,
+      address: delivery === "envio" ? address.trim() : "",
+      shippingCost: delivery === "envio" ? shippingAmount : null,
       items: known.map(({ item, product }) => ({
         productId: item.productId,
         name: product?.name ?? "Producto",
@@ -52,9 +73,28 @@ export function CartView({ products }: { products: Product[] }) {
         quantity: item.quantity,
       })),
     };
-    saveOrder(order);
-    clear();
-    openStoreWhatsApp(order);
+
+    setSending(true);
+    setError("");
+    setNotice("");
+    try {
+      const result = await shareOrderPdf(order);
+      saveOrder(order);
+      clear();
+      setNotice(
+        result === "shared"
+          ? `Se comparte solo el PDF. Elegí WhatsApp y el chat ${STORE_WHATSAPP_LABEL}.`
+          : `Descargamos la nota de pedido. Enviá ese PDF, sin texto, al WhatsApp ${STORE_WHATSAPP_LABEL}.`,
+      );
+    } catch (caught) {
+      if (caught instanceof DOMException && caught.name === "AbortError") {
+        setError("Cancelaste el envío. El pedido sigue en el carrito.");
+      } else {
+        setError("No se pudo preparar el PDF. Probá de nuevo.");
+      }
+    } finally {
+      setSending(false);
+    }
   }
 
   return (
@@ -62,8 +102,12 @@ export function CartView({ products }: { products: Product[] }) {
       <section>
         <h1 className="text-2xl font-semibold tracking-tight">Tu pedido</h1>
         <p className="mt-1 text-sm text-[#6f675f]">
-          El PDF se abre en el WhatsApp {STORE_WHATSAPP_LABEL}.
+          Se comparte únicamente la nota de pedido en PDF, con el envío adentro, al WhatsApp{" "}
+          {STORE_WHATSAPP_LABEL}.
         </p>
+        {notice ? (
+          <p className="mt-4 rounded-2xl bg-[#e7f6f2] px-4 py-3 text-sm text-[#0d6b60]">{notice}</p>
+        ) : null}
         {lines.length === 0 ? (
           <div className="mt-8 rounded-2xl border border-dashed border-black/15 bg-white px-4 py-10 text-center">
             <p className="text-[#6f675f]">Todavía no agregaste productos.</p>
@@ -121,11 +165,38 @@ export function CartView({ products }: { products: Product[] }) {
       </section>
 
       <form onSubmit={submit} className="h-fit rounded-2xl border border-black/5 bg-white p-5">
-        <h2 className="text-lg font-semibold">Datos para el pedido</h2>
+        <h2 className="text-lg font-semibold">Datos para la nota</h2>
         <div className="mt-4 space-y-3">
           <Field label="Nombre" value={customerName} onChange={setCustomerName} required />
           <Field label="Comercio" value={businessName} onChange={setBusinessName} />
           <Field label="Teléfono" value={phone} onChange={setPhone} required />
+          <div>
+            <p className="text-sm font-medium text-[#3a3532]">Entrega</p>
+            <div className="mt-1 grid grid-cols-2 gap-2">
+              <Choice
+                selected={delivery === "retiro"}
+                onClick={() => setDelivery("retiro")}
+                label="Retiro en el local"
+              />
+              <Choice
+                selected={delivery === "envio"}
+                onClick={() => setDelivery("envio")}
+                label="Envío a domicilio"
+              />
+            </div>
+          </div>
+          {delivery === "envio" ? (
+            <>
+              <Field label="Dirección de envío" value={address} onChange={setAddress} required />
+              <Field
+                label="Costo de envío"
+                value={shippingCost}
+                onChange={setShippingCost}
+                inputMode="decimal"
+                placeholder="Vacío = a coordinar"
+              />
+            </>
+          ) : null}
           <label className="block text-sm font-medium text-[#3a3532]">
             Nota
             <textarea
@@ -136,23 +207,68 @@ export function CartView({ products }: { products: Product[] }) {
             />
           </label>
         </div>
-        <p className="mt-4 text-lg font-semibold">
-          Total: {total == null ? "a confirmar" : formatMoney(total)}
-        </p>
+        <dl className="mt-4 space-y-1 text-sm">
+          <div className="flex justify-between gap-3">
+            <dt className="text-[#6f675f]">Subtotal</dt>
+            <dd>{subtotal == null ? "A confirmar" : formatMoney(subtotal)}</dd>
+          </div>
+          <div className="flex justify-between gap-3">
+            <dt className="text-[#6f675f]">Envío</dt>
+            <dd>
+              {delivery === "retiro"
+                ? "Retiro en el local"
+                : shippingAmount == null
+                  ? "A coordinar"
+                  : formatMoney(shippingAmount)}
+            </dd>
+          </div>
+          <div className="flex justify-between gap-3 text-lg font-semibold">
+            <dt>Total</dt>
+            <dd>{payable == null ? "A confirmar" : formatMoney(payable)}</dd>
+          </div>
+        </dl>
         {error ? <p className="mt-2 text-sm text-[#e92026]">{error}</p> : null}
         <button
           type="submit"
           className="mt-4 w-full rounded-full bg-[#128C7E] px-4 py-3 text-sm font-semibold text-white disabled:bg-[#ece7e1] disabled:text-[#8a8178]"
           disabled={known.length === 0 || sending}
         >
-          {sending ? "Abriendo WhatsApp…" : "Enviar PDF por WhatsApp"}
+          {sending ? "Preparando el PDF…" : "Compartir nota de pedido"}
         </button>
         <p className="mt-3 text-xs leading-relaxed text-[#6f675f]">
-          Se abre el chat de la librería con el detalle y el link del PDF. Ahí solo tenés que
-          tocar Enviar.
+          En el celular se abre la hoja para compartir con el archivo PDF solo. Elegí WhatsApp y el
+          chat {STORE_WHATSAPP_LABEL}. No se manda texto ni un link.
         </p>
+        <Link href="/pedidos" className="mt-3 inline-flex text-sm font-semibold text-[#e92026]">
+          Ver pedidos guardados
+        </Link>
       </form>
     </div>
+  );
+}
+
+function Choice({
+  selected,
+  onClick,
+  label,
+}: {
+  selected: boolean;
+  onClick: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={selected}
+      className={`rounded-xl border px-3 py-3 text-sm font-semibold ${
+        selected
+          ? "border-[#e92026] bg-[#fff1f1] text-[#e92026]"
+          : "border-black/10 bg-[#f7f4ef] text-[#3a3532]"
+      }`}
+    >
+      {label}
+    </button>
   );
 }
 
@@ -161,11 +277,15 @@ function Field({
   value,
   onChange,
   required,
+  placeholder,
+  inputMode,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
+  placeholder?: string;
+  inputMode?: "decimal" | "text";
 }) {
   return (
     <label className="block text-sm font-medium text-[#3a3532]">
@@ -173,8 +293,10 @@ function Field({
       <input
         required={required}
         value={value}
+        placeholder={placeholder}
+        inputMode={inputMode}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-[#f7f4ef] px-3 text-sm font-normal outline-none ring-[#e92026] focus:ring-2"
+        className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-[#f7f4ef] px-3 text-sm font-normal outline-none ring-[#e92026] placeholder:text-[#a39890] focus:ring-2"
       />
     </label>
   );

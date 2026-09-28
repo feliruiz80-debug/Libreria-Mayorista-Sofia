@@ -40,5 +40,8 @@ export type Order = {
   businessName: string;
   phone: string;
   note: string;
+  delivery: "retiro" | "envio";
+  address: string;
+  shippingCost: number | null;
   items: OrderLine[];
 };

@@ -7,13 +7,39 @@ let orders: Order[] = EMPTY;
 let hydrated = false;
 const listeners = new Set<() => void>();
 
+export function normalizeOrder(value: Partial<Order> | null | undefined): Order | null {
+  if (!value || typeof value.id !== "string" || !Array.isArray(value.items)) return null;
+  const delivery = value.delivery === "envio" ? "envio" : "retiro";
+  const shipping =
+    typeof value.shippingCost === "number" && Number.isFinite(value.shippingCost)
+      ? Math.round(value.shippingCost)
+      : null;
+  return {
+    id: value.id,
+    createdAt: typeof value.createdAt === "string" ? value.createdAt : new Date().toISOString(),
+    customerName: String(value.customerName ?? ""),
+    businessName: String(value.businessName ?? ""),
+    phone: String(value.phone ?? ""),
+    note: String(value.note ?? ""),
+    delivery,
+    address: delivery === "envio" ? String(value.address ?? "") : "",
+    shippingCost: delivery === "envio" ? shipping : null,
+    items: value.items,
+  };
+}
+
 function hydrate() {
   if (hydrated || typeof window === "undefined") return;
   hydrated = true;
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    const parsed = raw ? (JSON.parse(raw) as Order[]) : EMPTY;
-    orders = Array.isArray(parsed) && parsed.length > 0 ? parsed : EMPTY;
+    const parsed = raw ? (JSON.parse(raw) as Partial<Order>[]) : EMPTY;
+    orders = Array.isArray(parsed)
+      ? parsed.flatMap((order) => {
+          const normalized = normalizeOrder(order);
+          return normalized ? [normalized] : [];
+        })
+      : EMPTY;
   } catch {
     orders = EMPTY;
   }

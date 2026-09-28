@@ -36,33 +36,20 @@ export function orderTotal(order: Pick<Order, "items">): number | null {
   return total;
 }
 
-export function whatsAppShareUrl(order: Order): string {
-  return `https://wa.me/?text=${encodeURIComponent(formatOrderText(order))}`;
+export function orderPayable(order: Order): number | null {
+  const subtotal = orderTotal(order);
+  if (subtotal == null) return null;
+  if (order.delivery === "envio" && order.shippingCost == null) return null;
+  return subtotal + (order.delivery === "envio" ? (order.shippingCost ?? 0) : 0);
 }
 
-export function formatOrderText(order: Order): string {
-  const lines = [
-    "Pedido — Librería Mayorista Sofía",
-    `Fecha: ${formatDateTime(order.createdAt)}`,
-    `Cliente: ${order.customerName}`,
-  ];
-  if (order.businessName.trim()) lines.push(`Comercio: ${order.businessName.trim()}`);
-  lines.push(`Teléfono: ${order.phone}`);
-  if (order.note.trim()) lines.push(`Nota: ${order.note.trim()}`);
-  lines.push("");
-  for (const item of order.items) {
-    const price =
-      item.unitPrice == null ? "precio a confirmar" : formatMoney(item.unitPrice);
-    const subtotal = lineTotal(item.unitPrice, item.quantity);
-    const code = item.code ? ` (${item.code})` : "";
-    const presentation = item.presentation ? `, ${item.presentation}` : "";
-    const subtotalText = subtotal == null ? "" : ` = ${formatMoney(subtotal)}`;
-    lines.push(
-      `${item.quantity} × ${item.name}${code}${presentation} — ${price}${subtotalText}`,
-    );
-  }
-  lines.push("");
-  const total = orderTotal(order);
-  lines.push(total == null ? "Total: a confirmar" : `Total: ${formatMoney(total)}`);
-  return lines.join("\n");
+/** Importe en formato argentino. Vacío es null (a coordinar). */
+export function parseAmount(value: string): { ok: true; amount: number | null } | { ok: false } {
+  const trimmed = value.trim();
+  if (!trimmed) return { ok: true, amount: null };
+  const cleaned = trimmed.replace(/\$/g, "").replace(/\s/g, "");
+  if (!/^(?:\d{1,3}(?:\.\d{3})+|\d+)(?:,\d{1,2})?$/.test(cleaned)) return { ok: false };
+  const amount = Number(cleaned.replaceAll(".", "").replace(",", "."));
+  if (!Number.isFinite(amount) || amount < 0) return { ok: false };
+  return { ok: true, amount: Math.round(amount) };
 }
