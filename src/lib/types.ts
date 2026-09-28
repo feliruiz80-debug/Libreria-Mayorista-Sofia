@@ -22,6 +22,8 @@ export type Catalog = {
 export type CartItem = {
   productId: string;
   quantity: number;
+  /** Precio al agregar, para el total del carrito flotante sin volver a leer la hoja. */
+  unitPrice: number | null;
 };
 
 export type OrderLine = {
@@ -38,6 +40,8 @@ export type Order = {
   createdAt: string;
   customerName: string;
   businessName: string;
+  /** Opcional. Vacío si el cliente no lo cargó. */
+  cuit: string;
   phone: string;
   note: string;
   delivery: "retiro" | "envio";

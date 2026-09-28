@@ -3,16 +3,16 @@ import Link from "next/link";
 
 export function SiteHeader() {
   return (
-    <header className="sticky top-0 z-20 border-b border-black/5 bg-[#f6f1ea]/95 backdrop-blur">
-      <div className="mx-auto flex max-w-lg justify-center px-4 py-3">
+    <header className="sticky top-0 z-20 px-3 pt-[max(0.75rem,env(safe-area-inset-top))]">
+      <div className="glass mx-auto flex max-w-lg justify-center px-4 py-2">
         <Link href="/" className="block">
           <Image
-            src="/logo.webp"
+            src="/icon-512.png"
             alt="Librería Mayorista Sofía"
-            width={3888}
-            height={1312}
+            width={512}
+            height={512}
             priority
-            className="h-12 w-auto max-w-[11rem] object-contain"
+            className="h-16 w-16 object-contain"
           />
         </Link>
       </div>

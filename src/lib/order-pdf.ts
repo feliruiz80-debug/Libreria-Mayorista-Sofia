@@ -1,5 +1,6 @@
 import type { Order } from "@/lib/types";
-import { formatDateTime, formatMoney, formatShipDate, orderPayable, orderTotal } from "@/lib/format";
+import { formatDateTime, formatMoney, formatShipDate, orderTotal } from "@/lib/format";
+import { orderCode } from "@/lib/order-code";
 
 const WIN_ANSI: Record<string, string> = {
   "á": "\\341",
@@ -79,15 +80,6 @@ function textWidth(value: string, size: number): number {
   return (units / 1000) * size;
 }
 
-function orderCode(order: Order): string {
-  const date = new Date(order.createdAt);
-  const stamp = Number.isNaN(date.getTime())
-    ? "00000000"
-    : `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, "0")}${String(date.getDate()).padStart(2, "0")}`;
-  const tail = order.id.replace(/[^a-z0-9]/gi, "").slice(0, 4).toUpperCase() || "0000";
-  return `NP-${stamp}-${tail}`;
-}
-
 class Sheet {
   private ops: string[] = [];
 
@@ -139,24 +131,24 @@ class Sheet {
 }
 
 function drawHeader(page: Sheet, order: Order) {
-  page.fill("#e92026");
+  page.fill("#014d9b");
   page.rect(0, 758, 595, 84);
   page.fill("#ffffff");
   page.text("F1", 9, 36, 812, "LIBRERÍA MAYORISTA SOFÍA");
-  page.text("F2", 18, 36, 786, "NOTA DE PEDIDO");
-  page.text("F1", 8, 36, 768, "Córdoba  ·  WhatsApp 351 676-8638");
+  page.text("F2", 16, 36, 788, "CHECKLIST DE PEDIDO");
+  page.text("F1", 8, 36, 768, "Para imprimir y preparar");
   page.text("F2", 10, 340, 812, orderCode(order), "right", 220);
   page.text("F1", 9, 340, 796, formatDateTime(order.createdAt), "right", 220);
-  const badge = order.delivery === "envio" ? "CON ENVÍO" : "RETIRO EN LOCAL";
+  const badge = order.delivery === "envio" ? "ENVÍO" : "RETIRO EN LOCAL";
   page.text("F2", 9, 340, 778, badge, "right", 220);
 }
 
 function infoCard(page: Sheet, x: number, y: number, w: number, title: string, lines: string[]) {
-  page.fill("#f7f4ef");
+  page.fill("#f6f1ea");
   page.rect(x, y, w, 112);
-  page.stroke("#e6dfd6");
+  page.stroke("#014d9b");
   page.box(x, y, w, 112);
-  page.fill("#e92026");
+  page.fill("#014d9b");
   page.text("F2", 8, x + 12, y + 94, title);
   page.fill("#1b1d21");
   lines.slice(0, 4).forEach((line, index) => {
@@ -166,7 +158,10 @@ function infoCard(page: Sheet, x: number, y: number, w: number, title: string, l
 
 export function buildOrderPdf(order: Order): Uint8Array {
   const subtotal = orderTotal(order);
-  const payable = orderPayable(order);
+  const payable =
+    subtotal == null
+      ? null
+      : subtotal + (order.delivery === "envio" && order.shippingCost != null ? order.shippingCost : 0);
   const shipping =
     order.delivery === "envio"
       ? order.shippingCost == null
@@ -181,8 +176,8 @@ export function buildOrderPdf(order: Order): Uint8Array {
   const clientLines = [
     order.customerName || "Cliente",
     order.businessName || "Sin comercio",
+    order.cuit ? `CUIT ${order.cuit}` : "Sin CUIT",
     order.phone ? `Tel. ${order.phone}` : "Sin telefono",
-    order.note ? clip(order.note, 42) : "Sin nota",
   ];
   const addressLines = wrap(order.address || "Sin dirección", 38).slice(0, 1);
   const estimate = order.estimatedShipDate
@@ -196,11 +191,11 @@ export function buildOrderPdf(order: Order): Uint8Array {
   infoCard(page, 306, 628, 257, "ENVÍO", shippingLines);
 
   const columns = [
-    { label: "Código", x: 40, w: 78 },
-    { label: "Producto", x: 118, w: 214 },
-    { label: "Cant.", x: 332, w: 42 },
-    { label: "P. unit.", x: 374, w: 78 },
-    { label: "Importe", x: 452, w: 96 },
+    { label: "Código", x: 54, w: 72 },
+    { label: "Producto", x: 128, w: 196 },
+    { label: "Cant.", x: 326, w: 48 },
+    { label: "P. unit.", x: 376, w: 76 },
+    { label: "Importe", x: 454, w: 94 },
   ];
   let y = 590;
 
@@ -224,14 +219,16 @@ export function buildOrderPdf(order: Order): Uint8Array {
       header();
     }
     if (index % 2 === 0) {
-      page.fill("#fbf8f5");
+      page.fill("#f6f1ea");
       page.rect(32, y - 16, 531, 34);
     }
     const line = item.unitPrice == null ? null : item.unitPrice * item.quantity;
+    page.stroke("#014d9b");
+    page.box(36, y - 3, 10, 10);
     page.fill("#1b1d21");
     page.text("F1", 8, columns[0].x, y, clip(item.code || "-", 12));
     page.text("F2", 9, columns[1].x, y + 2, clip(item.name, 38));
-    page.fill("#6f675f");
+    page.fill("#014d9b");
     page.text(
       "F1",
       8,
@@ -261,30 +258,28 @@ export function buildOrderPdf(order: Order): Uint8Array {
     drawHeader(page, order);
     y = 720;
   }
-  page.fill("#f7f4ef");
-  page.rect(330, y - 62, 233, 78);
-  page.stroke("#e6dfd6");
-  page.box(330, y - 62, 233, 78);
-  page.fill("#6f675f");
-  page.text("F1", 9, 344, y, "Subtotal");
-  page.text("F1", 9, 344, y - 16, "Envío");
+  const units = order.items.reduce((sum, item) => sum + item.quantity, 0);
+  page.fill("#f6f1ea");
+  page.rect(330, y - 78, 233, 94);
+  page.stroke("#014d9b");
+  page.box(330, y - 78, 233, 94);
   page.fill("#1b1d21");
-  page.text("F1", 9, 430, y, subtotal == null ? "A confirmar" : money(subtotal), "right", 118);
-  page.text("F1", 9, 430, y - 16, shipping, "right", 118);
-  page.fill("#e92026");
-  page.rect(330, y - 62, 233, 26);
+  page.text("F1", 9, 344, y, "Unidades");
+  page.text("F1", 9, 344, y - 16, "Subtotal");
+  page.text("F1", 9, 344, y - 32, "Envío");
+  page.text("F1", 9, 430, y, String(units), "right", 118);
+  page.text("F1", 9, 430, y - 16, subtotal == null ? "A confirmar" : money(subtotal), "right", 118);
+  page.text("F1", 9, 430, y - 32, shipping, "right", 118);
+  page.fill("#014d9b");
+  page.rect(330, y - 78, 233, 26);
   page.fill("#ffffff");
-  page.text("F2", 10, 344, y - 48, "TOTAL");
-  page.text("F2", 10, 430, y - 48, payable == null ? "A confirmar" : money(payable), "right", 118);
+  page.text("F2", 10, 344, y - 64, "TOTAL");
+  page.text("F2", 10, 430, y - 64, payable == null ? "A confirmar" : money(payable), "right", 118);
 
-  page.fill("#8a8178");
-  page.text(
-    "F1",
-    8,
-    32,
-    36,
-    "Nota de pedido. Enviar este PDF, sin otro mensaje, al WhatsApp 351 676-8638.",
-  );
+  page.fill("#1b1d21");
+  const note = order.note.trim() ? `Obs.: ${order.note.trim()}` : "Sin observaciones";
+  page.text("F1", 9, 32, 56, clip(note, 88));
+  page.text("F1", 8, 32, 36, "Precios y stock sujetos a confirmación.");
 
   return assemble(pages.map((sheet) => sheet.toString()));
 }

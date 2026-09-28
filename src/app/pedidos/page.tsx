@@ -1,4 +1,5 @@
 import { Suspense } from "react";
+import { LoadingState } from "@/components/LoadingState";
 import { OrdersView } from "@/components/OrdersView";
 
 export const metadata = {
@@ -7,7 +8,7 @@ export const metadata = {
 
 export default function PedidosPage() {
   return (
-    <Suspense fallback={<p className="px-6 py-10 text-sm text-[#6f675f]">Cargando pedidos…</p>}>
+    <Suspense fallback={<LoadingState label="Cargando pedidos…" />}>
       <OrdersView />
     </Suspense>
   );

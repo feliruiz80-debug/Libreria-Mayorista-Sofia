@@ -50,6 +50,7 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
       if (value) params.set(key, value);
       else params.delete(key);
     }
+    params.delete("buscar");
     const suffix = params.toString();
     router.replace(suffix ? `/catalogo?${suffix}` : "/catalogo", { scroll: false });
   }
@@ -64,34 +65,32 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
   return (
     <div className="px-4 py-4">
       <div className="flex items-center gap-3">
-        <Link href="/" className="text-sm font-semibold text-[#e92026]">
+        <Link href="/" className="text-sm font-semibold text-[var(--color-primary)]">
           Volver
         </Link>
-        <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight">
-          {section || "Catálogo"}
-        </h1>
+        <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight">{section || "Catálogo"}</h1>
       </div>
-      <p className="mt-1 text-xs text-[#8a8178]">
+      <p className="muted mt-1 text-xs">
         {visible.length} productos · {formatDateTime(catalog.fetchedAt)}
       </p>
 
-      <form className="mt-4 grid gap-2" onSubmit={(event) => event.preventDefault()}>
-        <label className="block">
-          <span className="sr-only">Buscar</span>
+      <form className="glass mt-4 grid gap-3 p-3" onSubmit={(event) => event.preventDefault()}>
+        <label className="block text-sm font-semibold">
+          Buscar
           <input
             ref={searchRef}
             value={query}
             onChange={(event) => update({ q: event.target.value })}
             placeholder="Producto, marca o código"
-            className="h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none ring-[#e92026] focus:ring-2"
+            className="control mt-1"
           />
         </label>
-        <label className="block">
-          <span className="sr-only">Sección</span>
+        <label className="block text-sm font-semibold">
+          Sección
           <select
             value={section}
             onChange={(event) => update({ seccion: event.target.value })}
-            className="h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none ring-[#e92026] focus:ring-2"
+            className="control mt-1"
           >
             <option value="">Todas las secciones</option>
             {catalog.sections.map((name) => (
@@ -101,12 +100,12 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
             ))}
           </select>
         </label>
-        <label className="block">
-          <span className="sr-only">Marca</span>
+        <label className="block text-sm font-semibold">
+          Marca
           <select
             value={brand}
             onChange={(event) => update({ marca: event.target.value })}
-            className="h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none ring-[#e92026] focus:ring-2"
+            className="control mt-1"
           >
             <option value="">Todas las marcas</option>
             {catalog.brands.map((name) => (
@@ -119,15 +118,15 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
       </form>
 
       {grouped.length === 0 ? (
-        <p className="mt-10 rounded-2xl border border-dashed border-black/15 bg-white px-4 py-8 text-center text-[#6f675f]">
+        <p className="glass muted mt-6 px-4 py-8 text-center" role="status">
           No hay productos con esos filtros.
         </p>
       ) : (
         <div className="mt-5 space-y-6">
           {grouped.map((group) => (
-            <section key={group.name}>
+            <section key={group.name} aria-label={group.name}>
               {section ? null : (
-                <h2 className="text-xs font-semibold uppercase tracking-wide text-[#8a8178]">
+                <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-primary)]">
                   {group.name}
                 </h2>
               )}

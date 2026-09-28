@@ -19,6 +19,7 @@ export function normalizeOrder(value: Partial<Order> | null | undefined): Order 
     createdAt: typeof value.createdAt === "string" ? value.createdAt : new Date().toISOString(),
     customerName: String(value.customerName ?? ""),
     businessName: String(value.businessName ?? ""),
+    cuit: String(value.cuit ?? ""),
     phone: String(value.phone ?? ""),
     note: String(value.note ?? ""),
     estimatedShipDate: /^\d{4}-\d{2}-\d{2}$/.test(String(value.estimatedShipDate ?? ""))

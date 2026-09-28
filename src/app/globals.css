@@ -1,19 +1,186 @@
 @import "tailwindcss";
 
+/*
+  Paleta real de la app, sin colores nuevos:
+  - fondo: el crema que ya usa el layout (#f6f1ea)
+  - principal: el azul del logo (#014d9b)
+  - acento: el rojo que ya marcaba promos y acciones (#e92026)
+  - texto: el negro del CSS (#1b1d21)
+  El blanco del isotipo se usa solo como texto sobre el azul.
+*/
 :root {
-  --background: #f7f4ef;
-  --foreground: #1b1d21;
+  --color-bg: #f6f1ea;
+  --color-primary: #014d9b;
+  --color-accent: #e92026;
+  --color-text: #1b1d21;
+  --background: var(--color-bg);
+  --foreground: var(--color-text);
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
+  --color-background: var(--color-bg);
+  --color-foreground: var(--color-text);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  color: var(--color-text);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  background-color: var(--color-bg);
+  isolation: isolate;
+}
+
+/* Manchas fijas detrás del contenido. El desenfoque está en el degradado,
+   no en filter:blur, para no sumar capas pesadas en el celular. */
+body::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  background-image:
+    radial-gradient(ellipse 90% 55% at -10% -10%, color-mix(in srgb, var(--color-primary) 42%, transparent), transparent 62%),
+    radial-gradient(ellipse 75% 50% at 115% 8%, color-mix(in srgb, var(--color-accent) 32%, transparent), transparent 58%),
+    radial-gradient(ellipse 80% 45% at 50% 115%, color-mix(in srgb, var(--color-primary) 28%, transparent), transparent 60%),
+    linear-gradient(
+      165deg,
+      var(--color-bg) 0%,
+      color-mix(in srgb, var(--color-primary) 10%, var(--color-bg)) 48%,
+      color-mix(in srgb, var(--color-accent) 8%, var(--color-bg)) 100%
+    );
+}
+
+.muted {
+  color: color-mix(in srgb, var(--color-text) 72%, var(--color-bg));
+}
+
+/* Vidrio reutilizable. Como máximo una capa de backdrop-filter: lo de adentro no vuelve a desenfocar. */
+.glass {
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  border-radius: 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.08);
+}
+
+.glass .glass,
+.glass .btn-secondary {
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+@supports not (backdrop-filter: blur(1px)) {
+  .glass,
+  .btn-secondary {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: none;
+    -webkit-backdrop-filter: none;
+  }
+}
+
+.lift {
+  transition: transform 200ms ease, box-shadow 200ms ease;
+}
+
+.lift:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12);
+}
+
+.lift:active {
+  transform: translateY(0);
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 48px;
+  padding: 0.7rem 1.15rem;
+  border-radius: 999px;
+  font-weight: 650;
+  font-size: 1rem;
+  line-height: 1.2;
+  text-align: center;
+  transition: transform 200ms ease, box-shadow 200ms ease, background-color 200ms ease;
+}
+
+.btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.12);
+}
+
+.btn:active {
+  transform: translateY(0);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+}
+
+.btn:disabled {
+  opacity: 0.5;
+  transform: none;
+  box-shadow: none;
+  cursor: not-allowed;
+}
+
+.btn-primary {
+  background: var(--color-primary);
+  color: #fff;
+  border: 1px solid transparent;
+}
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.45);
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  border: 1px solid rgba(255, 255, 255, 0.6);
+  color: var(--color-text);
+}
+
+.control {
+  width: 100%;
+  min-height: 48px;
+  border-radius: 14px;
+  border: 1px solid color-mix(in srgb, var(--color-text) 18%, transparent);
+  background: color-mix(in srgb, var(--color-bg) 86%, white);
+  color: var(--color-text);
+  padding: 0.65rem 0.85rem;
+  font-size: 1rem;
+}
+
+.control::placeholder {
+  color: color-mix(in srgb, var(--color-text) 55%, var(--color-bg));
+}
+
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 3px;
+}
+
+dialog.glass {
+  width: min(32rem, calc(100vw - 1.5rem));
+  max-height: calc(100vh - 2rem);
+  margin: auto;
+  padding: 1.25rem;
+  color: var(--color-text);
+}
+
+dialog.glass::backdrop {
+  background: color-mix(in srgb, var(--color-text) 42%, transparent);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .btn,
+  .lift {
+    transition: none;
+  }
+
+  .btn:hover,
+  .lift:hover,
+  .btn:active,
+  .lift:active {
+    transform: none;
+  }
 }

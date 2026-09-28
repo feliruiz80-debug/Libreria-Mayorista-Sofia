@@ -1,6 +1,7 @@
 import { Suspense } from "react";
 import { CatalogBrowser } from "@/components/CatalogBrowser";
 import { CatalogStatus } from "@/components/CatalogStatus";
+import { LoadingState } from "@/components/LoadingState";
 import { loadCatalogResult } from "@/lib/sheets/catalog";
 
 export const metadata = {
@@ -12,7 +13,7 @@ export default async function CatalogoPage() {
   if (!result.ok) return <CatalogStatus message={result.message} />;
 
   return (
-    <Suspense fallback={<p className="px-6 py-10 text-sm text-[#6f675f]">Cargando catálogo…</p>}>
+    <Suspense fallback={<LoadingState label="Cargando catálogo…" />}>
       <CatalogBrowser catalog={result.catalog} />
     </Suspense>
   );

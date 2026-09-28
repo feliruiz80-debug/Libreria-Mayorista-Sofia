@@ -13,15 +13,19 @@ const listeners = new Set<() => void>();
 
 function sanitize(value: unknown): CartItem[] {
   if (!Array.isArray(value)) return EMPTY;
-  const next = value.filter(
-    (item): item is CartItem =>
-      !!item &&
-      typeof item === "object" &&
-      typeof (item as CartItem).productId === "string" &&
-      typeof (item as CartItem).quantity === "number" &&
-      Number.isFinite((item as CartItem).quantity) &&
-      (item as CartItem).quantity > 0,
-  );
+  const next = value.flatMap((item) => {
+    if (!item || typeof item !== "object") return [];
+    const candidate = item as Partial<CartItem>;
+    if (typeof candidate.productId !== "string") return [];
+    if (typeof candidate.quantity !== "number" || !Number.isFinite(candidate.quantity) || candidate.quantity <= 0) {
+      return [];
+    }
+    const unitPrice =
+      typeof candidate.unitPrice === "number" && Number.isFinite(candidate.unitPrice)
+        ? candidate.unitPrice
+        : null;
+    return [{ productId: candidate.productId, quantity: candidate.quantity, unitPrice }];
+  });
   return next.length > 0 ? next : EMPTY;
 }
 
@@ -60,7 +64,7 @@ const CartContext = createContext<{
   items: CartItem[];
   count: number;
   quantityOf: (productId: string) => number;
-  setQuantity: (productId: string, quantity: number) => void;
+  setQuantity: (productId: string, quantity: number, unitPrice?: number | null) => void;
   remove: (productId: string) => void;
   clear: () => void;
 } | null>(null);
@@ -68,17 +72,19 @@ const CartContext = createContext<{
 export function CartProvider({ children }: { children: ReactNode }) {
   const items = useSyncExternalStore(subscribe, getSnapshot, getServerSnapshot);
 
-  const setQuantity = useCallback((productId: string, quantity: number) => {
+  const setQuantity = useCallback((productId: string, quantity: number, unitPrice?: number | null) => {
     const current = getSnapshot();
     if (quantity <= 0) {
       commit(current.filter((item) => item.productId !== productId));
       return;
     }
     const existing = current.find((item) => item.productId === productId);
+    const price = unitPrice === undefined ? (existing?.unitPrice ?? null) : unitPrice;
+    if (existing && existing.quantity === quantity && existing.unitPrice === price) return;
     commit(
       existing
-        ? current.map((item) => (item.productId === productId ? { ...item, quantity } : item))
-        : [...current, { productId, quantity }],
+        ? current.map((item) => (item.productId === productId ? { productId, quantity, unitPrice: price } : item))
+        : [...current, { productId, quantity, unitPrice: price }],
     );
   }, []);
 

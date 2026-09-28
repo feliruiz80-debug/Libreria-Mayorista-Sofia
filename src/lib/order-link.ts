@@ -3,6 +3,7 @@ import type { Order, OrderLine } from "@/lib/types";
 type CompactOrder = {
   n: string;
   b: string;
+  c?: string;
   p: string;
   o: string;
   t: string;
@@ -32,6 +33,7 @@ export function encodeOrder(order: Order): string {
   const compact: CompactOrder = {
     n: order.customerName,
     b: order.businessName,
+    c: order.cuit,
     p: order.phone,
     o: order.note,
     t: order.createdAt,
@@ -67,6 +69,7 @@ export function decodeOrder(value: string): Order | null {
       createdAt: typeof parsed.t === "string" ? parsed.t : new Date().toISOString(),
       customerName: parsed.n.slice(0, 120),
       businessName: String(parsed.b ?? "").slice(0, 120),
+      cuit: String(parsed.c ?? "").slice(0, 20),
       phone: String(parsed.p ?? "").slice(0, 40),
       note: String(parsed.o ?? "").slice(0, 400),
       delivery: parsed.d === "envio" ? "envio" : "retiro",

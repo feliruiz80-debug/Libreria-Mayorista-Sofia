@@ -1,12 +1,15 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { QuantityControl } from "@/components/QuantityControl";
 import { useCart } from "@/components/CartProvider";
-import { formatMoney, formatShipDate, lineTotal, parseAmount } from "@/lib/format";
+import { formatMoney, lineTotal, orderTotal } from "@/lib/format";
+import { openOrderChecklist } from "@/lib/open-checklist";
+import { orderCode } from "@/lib/order-code";
 import { saveOrder } from "@/lib/orders-storage";
-import { openOrderOnWhatsApp, STORE_WHATSAPP_LABEL } from "@/lib/whatsapp";
+import { quantityLabel, sellingUnit } from "@/lib/selling-unit";
+import { openOrderOnWhatsApp, whatsappLabel, whatsappNumber } from "@/lib/whatsapp";
 import type { Order, Product } from "@/lib/types";
 
 export function CartView({ products }: { products: Product[] }) {
@@ -14,60 +17,59 @@ export function CartView({ products }: { products: Product[] }) {
   const byId = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
   const [customerName, setCustomerName] = useState("");
   const [businessName, setBusinessName] = useState("");
+  const [cuit, setCuit] = useState("");
   const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
   const [note, setNote] = useState("");
   const [delivery, setDelivery] = useState<"retiro" | "envio">("retiro");
-  const [address, setAddress] = useState("");
-  const [shippingCost, setShippingCost] = useState("");
-  const [estimatedShipDate, setEstimatedShipDate] = useState("");
   const [error, setError] = useState("");
+  const [draft, setDraft] = useState<Order | null>(null);
+  const dialogRef = useRef<HTMLDialogElement>(null);
+  const number = whatsappNumber();
+  const label = whatsappLabel();
 
   const lines = items.map((item) => ({ item, product: byId.get(item.productId) }));
   const known = lines.filter((line) => line.product);
+  const units = known.reduce((sum, line) => sum + line.item.quantity, 0);
   const subtotal = known.every((line) => line.product?.price != null)
     ? known.reduce((sum, line) => sum + (line.product?.price ?? 0) * line.item.quantity, 0)
     : null;
-  const parsedShipping = parseAmount(shippingCost);
-  const shippingAmount = delivery === "envio" && parsedShipping.ok ? parsedShipping.amount : null;
-  const payable =
-    subtotal == null || (delivery === "envio" && shippingAmount == null)
-      ? null
-      : subtotal + (delivery === "envio" ? (shippingAmount ?? 0) : 0);
 
-  function submit(event: FormEvent) {
-    event.preventDefault();
-    if (!customerName.trim() || !phone.trim()) {
-      setError("Completá el nombre y el teléfono para armar el pedido.");
-      return;
+  useEffect(() => {
+    for (const item of items) {
+      const product = byId.get(item.productId);
+      if (!product || item.unitPrice === product.price) continue;
+      setQuantity(item.productId, item.quantity, product.price);
+    }
+  }, [items, byId, setQuantity]);
+
+  function buildOrder(): Order | null {
+    const cuitDigits = cuit.replace(/\D/g, "");
+    if (!customerName.trim() || !businessName.trim() || !phone.trim() || !address.trim()) {
+      setError("Completá nombre, comercio, teléfono y localidad o dirección.");
+      return null;
+    }
+    if (cuitDigits && cuitDigits.length !== 11) {
+      setError("El CUIT tiene que tener 11 números, o dejalo vacío.");
+      return null;
     }
     if (known.length === 0) {
       setError("Agregá al menos un producto del catálogo.");
-      return;
+      return null;
     }
-    if (delivery === "envio" && !address.trim()) {
-      setError("Completá la dirección para el envío.");
-      return;
-    }
-    if (delivery === "envio" && !parsedShipping.ok) {
-      setError("El costo de envío no es un importe válido. Si todavía no está definido, dejalo vacío.");
-      return;
-    }
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(estimatedShipDate)) {
-      setError("Elegí una fecha de envío estimada.");
-      return;
-    }
-
-    const order: Order = {
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
+    setError("");
+    return {
+      id: draft?.id ?? crypto.randomUUID(),
+      createdAt: draft?.createdAt ?? new Date().toISOString(),
       customerName: customerName.trim(),
       businessName: businessName.trim(),
+      cuit: cuitDigits ? `${cuitDigits.slice(0, 2)}-${cuitDigits.slice(2, 10)}-${cuitDigits.slice(10)}` : "",
       phone: phone.trim(),
       note: note.trim(),
       delivery,
-      address: delivery === "envio" ? address.trim() : "",
-      shippingCost: delivery === "envio" ? shippingAmount : null,
-      estimatedShipDate,
+      address: address.trim(),
+      shippingCost: null,
+      estimatedShipDate: "",
       items: known.map(({ item, product }) => ({
         productId: item.productId,
         name: product?.name ?? "Producto",
@@ -77,189 +79,214 @@ export function CartView({ products }: { products: Product[] }) {
         quantity: item.quantity,
       })),
     };
+  }
 
-    setError("");
-    saveOrder(order);
+  function review(event: FormEvent) {
+    event.preventDefault();
+    const order = buildOrder();
+    if (!order) return;
+    setDraft(order);
+    dialogRef.current?.showModal();
+  }
+
+  function sendWhatsApp() {
+    if (!draft) return;
+    if (!number) {
+      setError("Falta configurar NEXT_PUBLIC_WHATSAPP_NUMBER.");
+      return;
+    }
+    saveOrder(draft);
     clear();
-    openOrderOnWhatsApp(order);
+    dialogRef.current?.close();
+    openOrderOnWhatsApp(draft);
   }
 
   return (
-    <div className="grid gap-6 px-4 py-4">
-      <section>
+    <div className="grid gap-4 px-4 py-4">
+      <section className="glass p-4">
         <h1 className="text-2xl font-semibold tracking-tight">Tu pedido</h1>
-        <p className="mt-1 text-sm text-[#6f675f]">
-          Se abre el chat de WhatsApp {STORE_WHATSAPP_LABEL} con la nota de pedido. En WhatsApp
-          solo tenés que tocar Enviar.
+        <p className="muted mt-1 text-sm">
+          {label
+            ? `Al confirmar se abre WhatsApp ${label} con el pedido escrito.`
+            : "Falta configurar NEXT_PUBLIC_WHATSAPP_NUMBER para poder enviarlo."}
         </p>
         {lines.length === 0 ? (
-          <div className="mt-8 rounded-2xl border border-dashed border-black/15 bg-white px-4 py-10 text-center">
-            <p className="text-[#6f675f]">Todavía no agregaste productos.</p>
-            <Link
-              href="/catalogo"
-              className="mt-4 inline-flex rounded-full bg-[#e92026] px-4 py-2.5 text-sm font-semibold text-white"
-            >
+          <div className="mt-6 px-2 py-8 text-center">
+            <p className="muted">Todavía no agregaste productos.</p>
+            <Link href="/catalogo" className="btn btn-primary mt-4">
               Ir al catálogo
             </Link>
           </div>
         ) : (
-          <ul className="mt-6 divide-y divide-black/5 overflow-hidden rounded-2xl border border-black/5 bg-white">
-            {lines.map(({ item, product }) => (
-              <li key={item.productId} className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center">
-                <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-[#1b1d21]">
-                    {product?.name ?? "Este producto ya no está en el catálogo"}
-                  </p>
-                  <p className="mt-1 text-sm text-[#6f675f]">
-                    {product
-                      ? [product.brand, product.code && `Cód. ${product.code}`, product.presentation]
-                          .filter(Boolean)
-                          .join(" · ")
-                      : "Sacalo del pedido para continuar."}
-                  </p>
-                  {product ? (
-                    <p className="mt-1 text-sm font-medium">
-                      {product.price == null ? "Consultar" : formatMoney(product.price)}
-                      {lineTotal(product.price, item.quantity) != null
-                        ? ` · ${formatMoney(lineTotal(product.price, item.quantity) ?? 0)}`
-                        : ""}
+          <ul className="mt-4 divide-y divide-[color-mix(in_srgb,var(--color-text)_12%,transparent)]">
+            {lines.map(({ item, product }) => {
+              const unit = sellingUnit(product?.presentation ?? "");
+              return (
+                <li key={item.productId} className="flex flex-col gap-3 py-4">
+                  <div className="min-w-0">
+                    <p className="font-semibold">{product?.name ?? "Este producto ya no está en el catálogo"}</p>
+                    <p className="muted mt-1 text-sm">
+                      {product
+                        ? [product.code && `Cód. ${product.code}`, quantityLabel(product.presentation, item.quantity)]
+                            .filter(Boolean)
+                            .join(" · ")
+                        : "Sacalo del pedido para continuar."}
                     </p>
-                  ) : null}
-                </div>
-                <div className="flex items-center gap-3">
-                  {product ? (
-                    <QuantityControl
-                      quantity={item.quantity}
-                      label={product.name}
-                      onChange={(quantity) => setQuantity(item.productId, quantity)}
-                    />
-                  ) : null}
-                  <button
-                    type="button"
-                    className="text-sm font-medium text-[#e92026]"
-                    onClick={() => remove(item.productId)}
-                  >
-                    Quitar
-                  </button>
-                </div>
-              </li>
-            ))}
+                    {product ? (
+                      <p className="mt-1 text-sm font-medium">
+                        {product.price == null ? "Consultar" : formatMoney(product.price)}
+                        {lineTotal(product.price, item.quantity) != null
+                          ? ` · ${formatMoney(lineTotal(product.price, item.quantity) ?? 0)}`
+                          : ""}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex flex-wrap items-center gap-3">
+                    {product ? (
+                      <QuantityControl
+                        quantity={item.quantity}
+                        step={unit.step}
+                        label={product.name}
+                        onChange={(quantity) => setQuantity(item.productId, quantity, product.price)}
+                      />
+                    ) : null}
+                    <button
+                      type="button"
+                      className="btn btn-secondary min-h-12 px-4 text-sm"
+                      onClick={() => remove(item.productId)}
+                    >
+                      Quitar
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
           </ul>
         )}
       </section>
 
-      <form onSubmit={submit} className="h-fit rounded-2xl border border-black/5 bg-white p-5">
-        <h2 className="text-lg font-semibold">Datos para la nota</h2>
-        <div className="mt-4 space-y-3">
-          <Field label="Nombre" value={customerName} onChange={setCustomerName} required />
-          <Field label="Comercio" value={businessName} onChange={setBusinessName} />
-          <Field label="Teléfono" value={phone} onChange={setPhone} required />
-          <div>
-            <p className="text-sm font-medium text-[#3a3532]">Entrega</p>
-            <div className="mt-1 grid grid-cols-2 gap-2">
-              <Choice
-                selected={delivery === "retiro"}
-                onClick={() => setDelivery("retiro")}
-                label="Retiro en el local"
-              />
-              <Choice
-                selected={delivery === "envio"}
-                onClick={() => setDelivery("envio")}
-                label="Envío a domicilio"
-              />
-            </div>
+      <form onSubmit={review} className="glass grid gap-3 p-4">
+        <h2 className="text-lg font-semibold">Datos del pedido</h2>
+        <Field label="Nombre y apellido" value={customerName} onChange={setCustomerName} autoComplete="name" required />
+        <Field
+          label="Razón social / nombre del comercio"
+          value={businessName}
+          onChange={setBusinessName}
+          autoComplete="organization"
+          required
+        />
+        <Field
+          label="CUIT (opcional)"
+          value={cuit}
+          onChange={setCuit}
+          inputMode="numeric"
+          placeholder="20-12345678-9"
+        />
+        <Field label="Teléfono" value={phone} onChange={setPhone} type="tel" autoComplete="tel" required />
+        <Field
+          label="Localidad / dirección"
+          value={address}
+          onChange={setAddress}
+          autoComplete="street-address"
+          required
+        />
+        <fieldset>
+          <legend className="text-sm font-semibold">Forma de entrega</legend>
+          <div className="mt-2 grid grid-cols-2 gap-2">
+            <Choice selected={delivery === "retiro"} onClick={() => setDelivery("retiro")} label="Retiro en local" />
+            <Choice selected={delivery === "envio"} onClick={() => setDelivery("envio")} label="Envío" />
           </div>
-          {delivery === "envio" ? (
-            <>
-              <Field label="Dirección de envío" value={address} onChange={setAddress} required />
-              <Field
-                label="Costo de envío"
-                value={shippingCost}
-                onChange={setShippingCost}
-                inputMode="decimal"
-                placeholder="Vacío = a coordinar"
-              />
-            </>
-          ) : null}
-          <Field
-            label="Fecha de envío estimada"
-            value={estimatedShipDate}
-            onChange={setEstimatedShipDate}
-            type="date"
-            required
+        </fieldset>
+        <label className="block text-sm font-semibold">
+          Observaciones
+          <textarea
+            value={note}
+            onChange={(event) => setNote(event.target.value)}
+            rows={3}
+            className="control mt-1"
           />
-          <label className="block text-sm font-medium text-[#3a3532]">
-            Nota
-            <textarea
-              value={note}
-              onChange={(event) => setNote(event.target.value)}
-              rows={3}
-              className="mt-1 w-full rounded-xl border border-black/10 bg-[#f7f4ef] px-3 py-2 text-sm font-normal outline-none ring-[#e92026] focus:ring-2"
-            />
-          </label>
-        </div>
-        <dl className="mt-4 space-y-1 text-sm">
+        </label>
+        <dl className="grid gap-1 text-sm">
           <div className="flex justify-between gap-3">
-            <dt className="text-[#6f675f]">Subtotal</dt>
-            <dd>{subtotal == null ? "A confirmar" : formatMoney(subtotal)}</dd>
-          </div>
-          <div className="flex justify-between gap-3">
-            <dt className="text-[#6f675f]">Envío</dt>
-            <dd>
-              {delivery === "retiro"
-                ? "Retiro en el local"
-                : shippingAmount == null
-                  ? "A coordinar"
-                  : formatMoney(shippingAmount)}
-            </dd>
-          </div>
-          <div className="flex justify-between gap-3">
-            <dt className="text-[#6f675f]">Fecha estimada</dt>
-            <dd>{estimatedShipDate ? formatShipDate(estimatedShipDate) : "A elegir"}</dd>
+            <dt className="muted">Unidades</dt>
+            <dd>{units}</dd>
           </div>
           <div className="flex justify-between gap-3 text-lg font-semibold">
             <dt>Total</dt>
-            <dd>{payable == null ? "A confirmar" : formatMoney(payable)}</dd>
+            <dd>{subtotal == null ? "A confirmar" : formatMoney(subtotal)}</dd>
           </div>
         </dl>
-        {error ? <p className="mt-2 text-sm text-[#e92026]">{error}</p> : null}
-        <button
-          type="submit"
-          className="mt-4 w-full rounded-full bg-[#128C7E] px-4 py-3 text-sm font-semibold text-white disabled:bg-[#ece7e1] disabled:text-[#8a8178]"
-          disabled={known.length === 0}
-        >
-          Enviar
+        {error ? (
+          <p className="text-sm font-semibold text-[var(--color-primary)]" role="alert">
+            {error}
+          </p>
+        ) : null}
+        <button type="submit" className="btn btn-primary w-full" disabled={known.length === 0}>
+          Revisar pedido
         </button>
-        <p className="mt-3 text-xs leading-relaxed text-[#6f675f]">
-          Igual que en Bebu: se abre tu chat {STORE_WHATSAPP_LABEL} con la nota ya escrita. Solo
-          falta tocar Enviar en WhatsApp.
-        </p>
-        <Link href="/pedidos" className="mt-3 inline-flex text-sm font-semibold text-[#e92026]">
+        <p className="muted text-xs leading-relaxed">Precios y stock sujetos a confirmación.</p>
+        <Link href="/pedidos" className="text-sm font-semibold text-[var(--color-primary)]">
           Ver pedidos guardados
         </Link>
       </form>
+
+      <dialog ref={dialogRef} className="glass" aria-labelledby="confirmar-pedido">
+        {draft ? (
+          <div className="grid gap-3">
+            <h2 id="confirmar-pedido" className="text-xl font-semibold">
+              Pedido N° {orderCode(draft)}
+            </h2>
+            <p className="text-sm">
+              {draft.customerName} · {draft.businessName}
+              {draft.cuit ? ` · CUIT ${draft.cuit}` : ""}
+            </p>
+            <p className="muted text-sm">
+              {draft.phone} · {draft.address} · {draft.delivery === "envio" ? "Envío" : "Retiro en local"}
+            </p>
+            <ul className="max-h-48 space-y-2 overflow-auto text-sm">
+              {draft.items.map((item) => (
+                <li key={item.productId}>
+                  <span className="font-semibold">{item.code || "Sin código"}</span> · {item.name}
+                  <br />
+                  {quantityLabel(item.presentation, item.quantity)} ·{" "}
+                  {lineTotal(item.unitPrice, item.quantity) == null
+                    ? "A confirmar"
+                    : formatMoney(lineTotal(item.unitPrice, item.quantity) ?? 0)}
+                </li>
+              ))}
+            </ul>
+            <p className="text-lg font-semibold">
+              {draft.items.reduce((sum, item) => sum + item.quantity, 0)} unidades ·{" "}
+              {orderTotal(draft) == null ? "Total a confirmar" : formatMoney(orderTotal(draft) ?? 0)}
+            </p>
+            <p className="text-sm">{draft.note || "Sin observaciones"}</p>
+            <p className="muted text-xs">Precios y stock sujetos a confirmación.</p>
+            <button type="button" className="btn btn-primary w-full" onClick={sendWhatsApp} disabled={!number}>
+              Enviar por WhatsApp
+            </button>
+            <button type="button" className="btn btn-secondary w-full" onClick={() => openOrderChecklist(draft)}>
+              Descargar checklist PDF
+            </button>
+            <button type="button" className="btn btn-secondary w-full" onClick={() => dialogRef.current?.close()}>
+              Volver a editar
+            </button>
+          </div>
+        ) : null}
+      </dialog>
     </div>
   );
 }
 
-function Choice({
-  selected,
-  onClick,
-  label,
-}: {
-  selected: boolean;
-  onClick: () => void;
-  label: string;
-}) {
+function Choice({ selected, onClick, label }: { selected: boolean; onClick: () => void; label: string }) {
   return (
     <button
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`rounded-xl border px-3 py-3 text-sm font-semibold ${
+      className={`min-h-12 rounded-2xl border px-3 py-3 text-sm font-semibold ${
         selected
-          ? "border-[#e92026] bg-[#fff1f1] text-[#e92026]"
-          : "border-black/10 bg-[#f7f4ef] text-[#3a3532]"
+          ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
+          : "btn-secondary"
       }`}
     >
       {label}
@@ -275,17 +302,19 @@ function Field({
   placeholder,
   inputMode,
   type = "text",
+  autoComplete,
 }: {
   label: string;
   value: string;
   onChange: (value: string) => void;
   required?: boolean;
   placeholder?: string;
-  inputMode?: "decimal" | "text";
-  type?: "text" | "date";
+  inputMode?: "decimal" | "text" | "numeric";
+  type?: "text" | "tel";
+  autoComplete?: string;
 }) {
   return (
-    <label className="block text-sm font-medium text-[#3a3532]">
+    <label className="block text-sm font-semibold">
       {label}
       <input
         type={type}
@@ -293,8 +322,9 @@ function Field({
         value={value}
         placeholder={placeholder}
         inputMode={inputMode}
+        autoComplete={autoComplete}
         onChange={(event) => onChange(event.target.value)}
-        className="mt-1 h-11 w-full rounded-xl border border-black/10 bg-[#f7f4ef] px-3 text-sm font-normal outline-none ring-[#e92026] placeholder:text-[#a39890] focus:ring-2"
+        className="control mt-1"
       />
     </label>
   );

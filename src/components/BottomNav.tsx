@@ -26,11 +26,8 @@ export function BottomNav() {
   }
 
   return (
-    <nav
-      className="fixed inset-x-0 bottom-0 z-30 border-t border-black/10 bg-white/95 backdrop-blur"
-      aria-label="Navegación principal"
-    >
-      <div className="mx-auto grid max-w-lg grid-cols-4 pb-[env(safe-area-inset-bottom)]">
+    <nav className="glass" aria-label="Navegación principal">
+      <div className="grid grid-cols-4">
         {items.map((item) => {
           const isActive = active(item.id);
           return (
@@ -38,14 +35,14 @@ export function BottomNav() {
               key={item.id}
               href={item.href}
               aria-current={isActive ? "page" : undefined}
-              className={`relative flex flex-col items-center gap-1 px-2 py-2 text-[11px] font-semibold ${
-                isActive ? "text-[#e92026]" : "text-[#6f675f]"
+              className={`relative flex min-h-16 flex-col items-center justify-center gap-1 px-2 py-2 text-xs font-semibold ${
+                isActive ? "text-[var(--color-primary)]" : "text-[var(--color-text)]"
               }`}
             >
               <NavIcon id={item.id} />
               {item.label}
               {item.id === "cart" && count > 0 ? (
-                <span className="absolute right-5 top-1 grid min-w-5 place-items-center rounded-full bg-[#e92026] px-1 text-[10px] text-white">
+                <span className="absolute right-4 top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-[var(--color-primary)] px-1 text-[10px] font-bold text-white">
                   {count > 9 ? "9+" : count}
                 </span>
               ) : null}
