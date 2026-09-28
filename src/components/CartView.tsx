@@ -2,15 +2,14 @@
 
 import Link from "next/link";
 import { useMemo, useState, type FormEvent } from "react";
-import { useRouter } from "next/navigation";
 import { QuantityControl } from "@/components/QuantityControl";
 import { useCart } from "@/components/CartProvider";
 import { formatMoney, lineTotal } from "@/lib/format";
 import { saveOrder } from "@/lib/orders-storage";
+import { openStoreWhatsApp, STORE_WHATSAPP_LABEL } from "@/lib/whatsapp";
 import type { Order, Product } from "@/lib/types";
 
 export function CartView({ products }: { products: Product[] }) {
-  const router = useRouter();
   const { items, setQuantity, remove, clear } = useCart();
   const byId = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
   const [customerName, setCustomerName] = useState("");
@@ -18,6 +17,7 @@ export function CartView({ products }: { products: Product[] }) {
   const [phone, setPhone] = useState("");
   const [note, setNote] = useState("");
   const [error, setError] = useState("");
+  const [sending, setSending] = useState(false);
 
   const lines = items.map((item) => ({ item, product: byId.get(item.productId) }));
   const known = lines.filter((line) => line.product);
@@ -35,6 +35,7 @@ export function CartView({ products }: { products: Product[] }) {
       setError("Agregá al menos un producto del catálogo.");
       return;
     }
+    setSending(true);
     const order: Order = {
       id: crypto.randomUUID(),
       createdAt: new Date().toISOString(),
@@ -53,16 +54,15 @@ export function CartView({ products }: { products: Product[] }) {
     };
     saveOrder(order);
     clear();
-    router.push(`/pedidos?nuevo=${order.id}`);
+    openStoreWhatsApp(order);
   }
 
   return (
-    <div className="mx-auto grid max-w-6xl gap-8 px-4 py-8 lg:grid-cols-[1.3fr_0.7fr] sm:px-6">
+    <div className="grid gap-6 px-4 py-4">
       <section>
-        <h1 className="text-3xl font-semibold tracking-tight">Tu pedido</h1>
-        <p className="mt-2 text-sm text-[#6f675f]">
-          Revisá las cantidades y dejá tus datos. El pedido queda en este dispositivo para
-          copiarlo o mandarlo por WhatsApp.
+        <h1 className="text-2xl font-semibold tracking-tight">Tu pedido</h1>
+        <p className="mt-1 text-sm text-[#6f675f]">
+          El PDF se abre en el WhatsApp {STORE_WHATSAPP_LABEL}.
         </p>
         {lines.length === 0 ? (
           <div className="mt-8 rounded-2xl border border-dashed border-black/15 bg-white px-4 py-10 text-center">
@@ -142,14 +142,14 @@ export function CartView({ products }: { products: Product[] }) {
         {error ? <p className="mt-2 text-sm text-[#e92026]">{error}</p> : null}
         <button
           type="submit"
-          className="mt-4 w-full rounded-full bg-[#e92026] px-4 py-3 text-sm font-semibold text-white hover:bg-[#cf1b21] disabled:bg-[#ece7e1] disabled:text-[#8a8178]"
-          disabled={known.length === 0}
+          className="mt-4 w-full rounded-full bg-[#128C7E] px-4 py-3 text-sm font-semibold text-white disabled:bg-[#ece7e1] disabled:text-[#8a8178]"
+          disabled={known.length === 0 || sending}
         >
-          Confirmar pedido
+          {sending ? "Abriendo WhatsApp…" : "Enviar PDF por WhatsApp"}
         </button>
         <p className="mt-3 text-xs leading-relaxed text-[#6f675f]">
-          La librería todavía no recibe el pedido sola: al confirmarlo lo podés copiar o enviar
-          por WhatsApp.
+          Se abre el chat de la librería con el detalle y el link del PDF. Ahí solo tenés que
+          tocar Enviar.
         </p>
       </form>
     </div>

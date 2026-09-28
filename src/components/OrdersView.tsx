@@ -3,13 +3,8 @@
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { useSearchParams } from "next/navigation";
-import {
-  formatDateTime,
-  formatMoney,
-  formatOrderText,
-  orderTotal,
-  whatsAppShareUrl,
-} from "@/lib/format";
+import { formatDateTime, formatMoney, formatOrderText, orderTotal } from "@/lib/format";
+import { openStoreWhatsApp } from "@/lib/whatsapp";
 import {
   getOrdersSnapshot,
   getServerOrdersSnapshot,
@@ -33,7 +28,7 @@ export function OrdersView() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6">
+    <div className="px-4 py-4">
       <h1 className="text-3xl font-semibold tracking-tight">Mis pedidos</h1>
       <p className="mt-2 text-sm text-[#6f675f]">
         Quedan guardados en este navegador. Copiá el texto o abrilo en WhatsApp para enviarlo a
@@ -90,14 +85,13 @@ export function OrdersView() {
                   >
                     {copiedId === order.id ? "Copiado" : "Copiar pedido"}
                   </button>
-                  <a
-                    href={whatsAppShareUrl(order)}
-                    target="_blank"
-                    rel="noreferrer"
-                    className="rounded-full bg-[#1b1d21] px-4 py-2 text-sm font-semibold text-white"
+                  <button
+                    type="button"
+                    onClick={() => openStoreWhatsApp(order)}
+                    className="rounded-full bg-[#128C7E] px-4 py-2 text-sm font-semibold text-white"
                   >
-                    Enviar por WhatsApp
-                  </a>
+                    Enviar PDF por WhatsApp
+                  </button>
                 </div>
               </li>
             );

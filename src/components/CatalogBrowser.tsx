@@ -1,6 +1,7 @@
 "use client";
 
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef } from "react";
+import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ProductCard } from "@/components/ProductCard";
 import { formatDateTime } from "@/lib/format";
@@ -26,6 +27,12 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
   const query = searchParams.get("q") ?? "";
   const section = searchParams.get("seccion") ?? "";
   const brand = searchParams.get("marca") ?? "";
+  const focusSearch = searchParams.get("buscar") === "1";
+  const searchRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (focusSearch) searchRef.current?.focus();
+  }, [focusSearch]);
 
   const visible = useMemo(
     () => catalog.products.filter((product) => matches(product, query.trim(), section, brand)),
@@ -55,28 +62,28 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
     .filter((group) => group.products.length > 0);
 
   return (
-    <div className="mx-auto max-w-6xl px-4 py-8 sm:px-6">
-      <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
-        <div>
-          <h1 className="text-3xl font-semibold tracking-tight text-[#1b1d21]">Catálogo</h1>
-          <p className="mt-2 text-sm text-[#6f675f]">
-            {catalog.products.length} productos · precios leídos el{" "}
-            {formatDateTime(catalog.fetchedAt)}
-          </p>
-        </div>
+    <div className="px-4 py-4">
+      <div className="flex items-center gap-3">
+        <Link href="/" className="text-sm font-semibold text-[#e92026]">
+          Volver
+        </Link>
+        <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight">
+          {section || "Catálogo"}
+        </h1>
       </div>
+      <p className="mt-1 text-xs text-[#8a8178]">
+        {visible.length} productos · {formatDateTime(catalog.fetchedAt)}
+      </p>
 
-      <form
-        className="mt-6 grid gap-3 rounded-2xl border border-black/5 bg-white p-3 sm:grid-cols-[1fr_14rem_14rem]"
-        onSubmit={(event) => event.preventDefault()}
-      >
+      <form className="mt-4 grid gap-2" onSubmit={(event) => event.preventDefault()}>
         <label className="block">
           <span className="sr-only">Buscar</span>
           <input
+            ref={searchRef}
             value={query}
             onChange={(event) => update({ q: event.target.value })}
-            placeholder="Buscar producto, marca o código"
-            className="h-11 w-full rounded-xl border border-black/10 bg-[#f7f4ef] px-3 text-sm outline-none ring-[#e92026] focus:ring-2"
+            placeholder="Producto, marca o código"
+            className="h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none ring-[#e92026] focus:ring-2"
           />
         </label>
         <label className="block">
@@ -84,7 +91,7 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
           <select
             value={section}
             onChange={(event) => update({ seccion: event.target.value })}
-            className="h-11 w-full rounded-xl border border-black/10 bg-[#f7f4ef] px-3 text-sm outline-none ring-[#e92026] focus:ring-2"
+            className="h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none ring-[#e92026] focus:ring-2"
           >
             <option value="">Todas las secciones</option>
             {catalog.sections.map((name) => (
@@ -99,7 +106,7 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
           <select
             value={brand}
             onChange={(event) => update({ marca: event.target.value })}
-            className="h-11 w-full rounded-xl border border-black/10 bg-[#f7f4ef] px-3 text-sm outline-none ring-[#e92026] focus:ring-2"
+            className="h-11 w-full rounded-full border border-black/10 bg-white px-4 text-sm outline-none ring-[#e92026] focus:ring-2"
           >
             <option value="">Todas las marcas</option>
             {catalog.brands.map((name) => (
@@ -116,11 +123,15 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
           No hay productos con esos filtros.
         </p>
       ) : (
-        <div className="mt-8 space-y-10">
+        <div className="mt-5 space-y-6">
           {grouped.map((group) => (
             <section key={group.name}>
-              <h2 className="text-sm font-semibold tracking-wide text-[#6f675f]">{group.name}</h2>
-              <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {section ? null : (
+                <h2 className="text-xs font-semibold uppercase tracking-wide text-[#8a8178]">
+                  {group.name}
+                </h2>
+              )}
+              <div className={`grid grid-cols-2 gap-3 ${section ? "" : "mt-3"}`}>
                 {group.products.map((product) => (
                   <ProductCard key={product.id} product={product} />
                 ))}
