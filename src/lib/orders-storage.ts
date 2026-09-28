@@ -21,6 +21,9 @@ export function normalizeOrder(value: Partial<Order> | null | undefined): Order 
     businessName: String(value.businessName ?? ""),
     phone: String(value.phone ?? ""),
     note: String(value.note ?? ""),
+    estimatedShipDate: /^\d{4}-\d{2}-\d{2}$/.test(String(value.estimatedShipDate ?? ""))
+      ? String(value.estimatedShipDate)
+      : "",
     delivery,
     address: delivery === "envio" ? String(value.address ?? "") : "",
     shippingCost: delivery === "envio" ? shipping : null,

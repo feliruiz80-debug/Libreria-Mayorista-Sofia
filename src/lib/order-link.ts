@@ -9,6 +9,7 @@ type CompactOrder = {
   d?: "retiro" | "envio";
   a?: string;
   s?: number | null;
+  e?: string;
   i: Array<[string, string, string, number, number | null]>;
 };
 
@@ -37,6 +38,7 @@ export function encodeOrder(order: Order): string {
     d: order.delivery,
     a: order.address,
     s: order.shippingCost,
+    e: order.estimatedShipDate,
     i: order.items.map((item) => [
       item.name,
       item.code,
@@ -71,6 +73,7 @@ export function decodeOrder(value: string): Order | null {
       address: String(parsed.a ?? "").slice(0, 180),
       shippingCost:
         parsed.s == null || Number.isNaN(Number(parsed.s)) ? null : Math.round(Number(parsed.s)),
+      estimatedShipDate: /^\d{4}-\d{2}-\d{2}$/.test(String(parsed.e ?? "")) ? String(parsed.e) : "",
       items,
     };
   } catch {

@@ -2,8 +2,8 @@
 
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
-import { formatDateTime, formatMoney, orderPayable, orderTotal } from "@/lib/format";
-import { openOrderOnWhatsApp, STORE_WHATSAPP_LABEL } from "@/lib/whatsapp";
+import { formatDateTime, formatMoney, formatShipDate, orderPayable, orderTotal } from "@/lib/format";
+import { sendOrderPdf, STORE_WHATSAPP_LABEL } from "@/lib/whatsapp";
 import {
   getOrdersSnapshot,
   getServerOrdersSnapshot,
@@ -15,12 +15,17 @@ export function OrdersView() {
   const orders = useSyncExternalStore(subscribeOrders, getOrdersSnapshot, getServerOrdersSnapshot);
   const [notice, setNotice] = useState("");
 
-  function send(order: Order) {
+  async function send(order: Order) {
     setNotice("");
     try {
-      openOrderOnWhatsApp(order);
-    } catch {
-      setNotice("No se pudo abrir el WhatsApp de la librería.");
+      const result = await sendOrderPdf(order);
+      if (result === "downloaded") {
+        setNotice(`Se descargó el PDF. Enviá ese archivo al WhatsApp ${STORE_WHATSAPP_LABEL}.`);
+      }
+    } catch (caught) {
+      if (!(caught instanceof DOMException && caught.name === "AbortError")) {
+        setNotice("No se pudo preparar el archivo.");
+      }
     }
   }
 
@@ -28,8 +33,7 @@ export function OrdersView() {
     <div className="px-4 py-4">
       <h1 className="text-3xl font-semibold tracking-tight">Mis pedidos</h1>
       <p className="mt-2 text-sm text-[#6f675f]">
-        Quedan guardados en este navegador. Podés volver a abrir el chat {STORE_WHATSAPP_LABEL}{" "}
-        con la nota lista para enviar.
+        Quedan guardados en este navegador. Se reenvían como mensaje con el archivo PDF, sin link.
       </p>
       {notice ? (
         <p className="mt-4 rounded-2xl bg-[#e7f6f2] px-4 py-3 text-sm text-[#0d6b60]">{notice}</p>
@@ -68,6 +72,9 @@ export function OrdersView() {
                   {order.delivery === "envio"
                     ? `Envío a ${order.address || "domicilio"} · ${shipping}`
                     : "Retiro en el local"}
+                  {order.estimatedShipDate
+                    ? ` · Estimada ${formatShipDate(order.estimatedShipDate)}`
+                    : ""}
                 </p>
                 <ul className="mt-3 space-y-1 text-sm">
                   {order.items.map((item) => (

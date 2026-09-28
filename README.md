@@ -7,7 +7,7 @@ App para que los clientes vean el catálogo y armen un pedido. Los productos, pr
 - Buscar productos por nombre, marca o código
 - Filtrar por sección y marca
 - Ver precio, presentación, stock y la ficha del sitio
-- Armar un pedido con retiro o envío y enviarlo al WhatsApp `351 676-8638`. Se abre ese chat con la nota de pedido lista para mandar
+- Armar un pedido con retiro o envío y mandarlo al WhatsApp `351 676-8638` como un mensaje con el archivo PDF, sin link, y con la fecha de envío estimada
 
 En el celular se puede agregar a la pantalla de inicio: la barra de abajo tiene Inicio, Promos, Buscar y Carrito.
 

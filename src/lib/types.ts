@@ -43,5 +43,7 @@ export type Order = {
   delivery: "retiro" | "envio";
   address: string;
   shippingCost: number | null;
+  /** Fecha elegida por el cliente, formato YYYY-MM-DD. */
+  estimatedShipDate: string;
   items: OrderLine[];
 };

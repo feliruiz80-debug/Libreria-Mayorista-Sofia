@@ -1,5 +1,5 @@
 import type { Order } from "@/lib/types";
-import { formatDateTime, formatMoney, orderPayable, orderTotal } from "@/lib/format";
+import { formatDateTime, formatMoney, formatShipDate, orderPayable, orderTotal } from "@/lib/format";
 
 const WIN_ANSI: Record<string, string> = {
   "á": "\\341",
@@ -184,11 +184,14 @@ export function buildOrderPdf(order: Order): Uint8Array {
     order.phone ? `Tel. ${order.phone}` : "Sin telefono",
     order.note ? clip(order.note, 42) : "Sin nota",
   ];
-  const addressLines = wrap(order.address || "Sin dirección", 38).slice(0, 2);
+  const addressLines = wrap(order.address || "Sin dirección", 38).slice(0, 1);
+  const estimate = order.estimatedShipDate
+    ? `Estimada: ${formatShipDate(order.estimatedShipDate)}`
+    : "Fecha estimada: a coordinar";
   const shippingLines =
     order.delivery === "envio"
-      ? ["Envío a domicilio", ...addressLines, `Costo: ${shipping}`]
-      : ["Retiro en el local", "Sin costo de envío", "Lo retira el cliente"];
+      ? ["Envío a domicilio", ...addressLines, `Costo: ${shipping}`, estimate]
+      : ["Retiro en el local", "Sin costo de envío", estimate];
   infoCard(page, 32, 628, 258, "CLIENTE", clientLines);
   infoCard(page, 306, 628, 257, "ENVÍO", shippingLines);
 
