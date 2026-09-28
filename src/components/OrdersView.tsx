@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useState, useSyncExternalStore } from "react";
 import { formatDateTime, formatMoney, orderPayable, orderTotal } from "@/lib/format";
-import { shareOrderPdf, STORE_WHATSAPP_LABEL } from "@/lib/whatsapp";
+import { openOrderOnWhatsApp, STORE_WHATSAPP_LABEL } from "@/lib/whatsapp";
 import {
   getOrdersSnapshot,
   getServerOrdersSnapshot,
@@ -13,25 +13,14 @@ import type { Order } from "@/lib/types";
 
 export function OrdersView() {
   const orders = useSyncExternalStore(subscribeOrders, getOrdersSnapshot, getServerOrdersSnapshot);
-  const [sharingId, setSharingId] = useState("");
   const [notice, setNotice] = useState("");
 
-  async function send(order: Order) {
-    setSharingId(order.id);
+  function send(order: Order) {
     setNotice("");
     try {
-      const result = await shareOrderPdf(order);
-      setNotice(
-        result === "shared"
-          ? `Se comparte solo el PDF. Elegí WhatsApp y el chat ${STORE_WHATSAPP_LABEL}.`
-          : `Descargamos la nota de pedido. Enviá ese PDF, sin texto, al WhatsApp ${STORE_WHATSAPP_LABEL}.`,
-      );
-    } catch (caught) {
-      if (!(caught instanceof DOMException && caught.name === "AbortError")) {
-        setNotice("No se pudo preparar el PDF.");
-      }
-    } finally {
-      setSharingId("");
+      openOrderOnWhatsApp(order);
+    } catch {
+      setNotice("No se pudo abrir el WhatsApp de la librería.");
     }
   }
 
@@ -39,8 +28,8 @@ export function OrdersView() {
     <div className="px-4 py-4">
       <h1 className="text-3xl font-semibold tracking-tight">Mis pedidos</h1>
       <p className="mt-2 text-sm text-[#6f675f]">
-        Quedan guardados en este navegador. Compartí de nuevo la nota en PDF al WhatsApp{" "}
-        {STORE_WHATSAPP_LABEL}.
+        Quedan guardados en este navegador. Podés volver a abrir el chat {STORE_WHATSAPP_LABEL}{" "}
+        con la nota lista para enviar.
       </p>
       {notice ? (
         <p className="mt-4 rounded-2xl bg-[#e7f6f2] px-4 py-3 text-sm text-[#0d6b60]">{notice}</p>
@@ -98,10 +87,9 @@ export function OrdersView() {
                 <button
                   type="button"
                   onClick={() => send(order)}
-                  disabled={sharingId === order.id}
-                  className="mt-4 rounded-full bg-[#128C7E] px-4 py-2 text-sm font-semibold text-white disabled:bg-[#ece7e1] disabled:text-[#8a8178]"
+                  className="mt-4 rounded-full bg-[#128C7E] px-4 py-2 text-sm font-semibold text-white"
                 >
-                  {sharingId === order.id ? "Preparando el PDF…" : "Compartir PDF"}
+                  Enviar a {STORE_WHATSAPP_LABEL}
                 </button>
               </li>
             );

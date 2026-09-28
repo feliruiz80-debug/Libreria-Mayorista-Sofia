@@ -6,7 +6,7 @@ import { QuantityControl } from "@/components/QuantityControl";
 import { useCart } from "@/components/CartProvider";
 import { formatMoney, lineTotal, parseAmount } from "@/lib/format";
 import { saveOrder } from "@/lib/orders-storage";
-import { shareOrderPdf, STORE_WHATSAPP_LABEL } from "@/lib/whatsapp";
+import { openOrderOnWhatsApp, STORE_WHATSAPP_LABEL } from "@/lib/whatsapp";
 import type { Order, Product } from "@/lib/types";
 
 export function CartView({ products }: { products: Product[] }) {
@@ -20,7 +20,6 @@ export function CartView({ products }: { products: Product[] }) {
   const [address, setAddress] = useState("");
   const [shippingCost, setShippingCost] = useState("");
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
   const [sending, setSending] = useState(false);
 
   const lines = items.map((item) => ({ item, product: byId.get(item.productId) }));
@@ -35,7 +34,7 @@ export function CartView({ products }: { products: Product[] }) {
       ? null
       : subtotal + (delivery === "envio" ? (shippingAmount ?? 0) : 0);
 
-  async function submit(event: FormEvent) {
+  function submit(event: FormEvent) {
     event.preventDefault();
     if (!customerName.trim() || !phone.trim()) {
       setError("Completá el nombre y el teléfono para armar el pedido.");
@@ -76,24 +75,13 @@ export function CartView({ products }: { products: Product[] }) {
 
     setSending(true);
     setError("");
-    setNotice("");
     try {
-      const result = await shareOrderPdf(order);
       saveOrder(order);
       clear();
-      setNotice(
-        result === "shared"
-          ? `Se comparte solo el PDF. Elegí WhatsApp y el chat ${STORE_WHATSAPP_LABEL}.`
-          : `Descargamos la nota de pedido. Enviá ese PDF, sin texto, al WhatsApp ${STORE_WHATSAPP_LABEL}.`,
-      );
-    } catch (caught) {
-      if (caught instanceof DOMException && caught.name === "AbortError") {
-        setError("Cancelaste el envío. El pedido sigue en el carrito.");
-      } else {
-        setError("No se pudo preparar el PDF. Probá de nuevo.");
-      }
-    } finally {
+      openOrderOnWhatsApp(order);
+    } catch {
       setSending(false);
+      setError("No se pudo abrir el WhatsApp de la librería. Probá de nuevo.");
     }
   }
 
@@ -102,12 +90,8 @@ export function CartView({ products }: { products: Product[] }) {
       <section>
         <h1 className="text-2xl font-semibold tracking-tight">Tu pedido</h1>
         <p className="mt-1 text-sm text-[#6f675f]">
-          Se comparte únicamente la nota de pedido en PDF, con el envío adentro, al WhatsApp{" "}
-          {STORE_WHATSAPP_LABEL}.
+          Se abre el WhatsApp {STORE_WHATSAPP_LABEL} con la nota de pedido lista para enviar.
         </p>
-        {notice ? (
-          <p className="mt-4 rounded-2xl bg-[#e7f6f2] px-4 py-3 text-sm text-[#0d6b60]">{notice}</p>
-        ) : null}
         {lines.length === 0 ? (
           <div className="mt-8 rounded-2xl border border-dashed border-black/15 bg-white px-4 py-10 text-center">
             <p className="text-[#6f675f]">Todavía no agregaste productos.</p>
@@ -233,11 +217,11 @@ export function CartView({ products }: { products: Product[] }) {
           className="mt-4 w-full rounded-full bg-[#128C7E] px-4 py-3 text-sm font-semibold text-white disabled:bg-[#ece7e1] disabled:text-[#8a8178]"
           disabled={known.length === 0 || sending}
         >
-          {sending ? "Preparando el PDF…" : "Compartir nota de pedido"}
+          {sending ? "Abriendo WhatsApp…" : `Enviar a ${STORE_WHATSAPP_LABEL}`}
         </button>
         <p className="mt-3 text-xs leading-relaxed text-[#6f675f]">
-          En el celular se abre la hoja para compartir con el archivo PDF solo. Elegí WhatsApp y el
-          chat {STORE_WHATSAPP_LABEL}. No se manda texto ni un link.
+          Se abre el chat {STORE_WHATSAPP_LABEL}. Ahí solo tenés que tocar Enviar. No hace falta
+          buscar el número.
         </p>
         <Link href="/pedidos" className="mt-3 inline-flex text-sm font-semibold text-[#e92026]">
           Ver pedidos guardados
