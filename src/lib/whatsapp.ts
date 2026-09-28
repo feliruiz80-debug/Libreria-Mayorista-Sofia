@@ -1,52 +1,69 @@
-import { formatShipDate } from "@/lib/format";
-import { buildOrderPdf } from "@/lib/order-pdf";
+import {
+  formatDateTime,
+  formatMoney,
+  formatShipDate,
+  lineTotal,
+  orderPayable,
+  orderTotal,
+} from "@/lib/format";
 import type { Order } from "@/lib/types";
 
-/** Córdoba, formato de WhatsApp: 54 9 351 676-8638. */
+/**
+ * Celular de Córdoba. WhatsApp pide el 9 después del 54:
+ * +54 351 676-8638 se abre como 5493516768638.
+ */
 export const STORE_WHATSAPP = "5493516768638";
-export const STORE_WHATSAPP_LABEL = "351 676-8638";
-
-function fileName(order: Order): string {
-  const safe = order.customerName
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, "-")
-    .replace(/^-|-$/g, "");
-  return `nota-pedido-${safe || "sofia"}.pdf`;
-}
+export const STORE_WHATSAPP_LABEL = "+54 351 676-8638";
 
 export function orderMessage(order: Order): string {
-  const date = order.estimatedShipDate
-    ? formatShipDate(order.estimatedShipDate)
-    : "a coordinar";
-  return `Hola Felipe, ¿cómo estás? Este es mi pedido.\nFecha de envío estimada: ${date}`;
+  const lines = [
+    "Hola Felipe, ¿cómo estás? Este es mi pedido.",
+    "",
+    "Nota de pedido — Librería Mayorista Sofía",
+    `Fecha: ${formatDateTime(order.createdAt)}`,
+    `Cliente: ${order.customerName}`,
+  ];
+  if (order.businessName.trim()) lines.push(`Comercio: ${order.businessName.trim()}`);
+  lines.push(`Teléfono: ${order.phone}`);
+  if (order.delivery === "envio") {
+    lines.push("Entrega: Envío a domicilio");
+    if (order.address.trim()) lines.push(`Dirección: ${order.address.trim()}`);
+    lines.push(
+      `Costo de envío: ${order.shippingCost == null ? "A coordinar" : formatMoney(order.shippingCost)}`,
+    );
+  } else {
+    lines.push("Entrega: Retiro en el local");
+  }
+  lines.push(
+    `Fecha de envío estimada: ${
+      order.estimatedShipDate ? formatShipDate(order.estimatedShipDate) : "a coordinar"
+    }`,
+  );
+  if (order.note.trim()) lines.push(`Nota: ${order.note.trim()}`);
+  lines.push("");
+  for (const item of order.items) {
+    const price = item.unitPrice == null ? "precio a confirmar" : formatMoney(item.unitPrice);
+    const subtotal = lineTotal(item.unitPrice, item.quantity);
+    const code = item.code ? ` (${item.code})` : "";
+    const presentation = item.presentation ? `, ${item.presentation}` : "";
+    const subtotalText = subtotal == null ? "" : ` = ${formatMoney(subtotal)}`;
+    lines.push(`${item.quantity} × ${item.name}${code}${presentation} — ${price}${subtotalText}`);
+  }
+  lines.push("");
+  const subtotal = orderTotal(order);
+  const total = orderPayable(order);
+  lines.push(subtotal == null ? "Subtotal: a confirmar" : `Subtotal: ${formatMoney(subtotal)}`);
+  if (order.delivery === "envio") {
+    lines.push(
+      `Envío: ${order.shippingCost == null ? "a coordinar" : formatMoney(order.shippingCost)}`,
+    );
+  }
+  lines.push(total == null ? "Total: a confirmar" : `Total: ${formatMoney(total)}`);
+  return lines.join("\n");
 }
 
-/** Manda el mensaje y el PDF como archivo. No incluye ningún link. */
-export async function sendOrderPdf(order: Order): Promise<"shared" | "downloaded"> {
-  const file = new File([new Uint8Array(buildOrderPdf(order))], fileName(order), {
-    type: "application/pdf",
-  });
-  const text = orderMessage(order);
-  const withFile = { text, files: [file] };
-  try {
-    if (typeof navigator !== "undefined" && navigator.canShare?.(withFile)) {
-      await navigator.share(withFile);
-      return "shared";
-    }
-    if (typeof navigator !== "undefined" && navigator.canShare?.({ files: [file] })) {
-      await navigator.share({ files: [file], text });
-      return "shared";
-    }
-  } catch (error) {
-    if (error instanceof DOMException && error.name === "AbortError") throw error;
-  }
-  const url = URL.createObjectURL(file);
-  const link = document.createElement("a");
-  link.href = url;
-  link.download = file.name;
-  link.click();
-  URL.revokeObjectURL(url);
-  return "downloaded";
+/** Igual que Bebu: abre el chat de la librería con la nota ya escrita. */
+export function openOrderOnWhatsApp(order: Order) {
+  const url = `https://wa.me/${STORE_WHATSAPP}?text=${encodeURIComponent(orderMessage(order))}`;
+  window.location.assign(url);
 }

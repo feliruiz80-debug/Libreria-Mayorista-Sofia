@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useSyncExternalStore } from "react";
+import { useSyncExternalStore } from "react";
 import { formatDateTime, formatMoney, formatShipDate, orderPayable, orderTotal } from "@/lib/format";
-import { sendOrderPdf, STORE_WHATSAPP_LABEL } from "@/lib/whatsapp";
+import { openOrderOnWhatsApp, STORE_WHATSAPP_LABEL } from "@/lib/whatsapp";
 import {
   getOrdersSnapshot,
   getServerOrdersSnapshot,
@@ -13,31 +13,18 @@ import type { Order } from "@/lib/types";
 
 export function OrdersView() {
   const orders = useSyncExternalStore(subscribeOrders, getOrdersSnapshot, getServerOrdersSnapshot);
-  const [notice, setNotice] = useState("");
 
-  async function send(order: Order) {
-    setNotice("");
-    try {
-      const result = await sendOrderPdf(order);
-      if (result === "downloaded") {
-        setNotice(`Se descargó el PDF. Enviá ese archivo al WhatsApp ${STORE_WHATSAPP_LABEL}.`);
-      }
-    } catch (caught) {
-      if (!(caught instanceof DOMException && caught.name === "AbortError")) {
-        setNotice("No se pudo preparar el archivo.");
-      }
-    }
+  function send(order: Order) {
+    openOrderOnWhatsApp(order);
   }
 
   return (
     <div className="px-4 py-4">
       <h1 className="text-3xl font-semibold tracking-tight">Mis pedidos</h1>
       <p className="mt-2 text-sm text-[#6f675f]">
-        Quedan guardados en este navegador. Se reenvían como mensaje con el archivo PDF, sin link.
+        Quedan guardados en este navegador. Enviar abre de nuevo el chat {STORE_WHATSAPP_LABEL}{" "}
+        con la nota.
       </p>
-      {notice ? (
-        <p className="mt-4 rounded-2xl bg-[#e7f6f2] px-4 py-3 text-sm text-[#0d6b60]">{notice}</p>
-      ) : null}
       {orders.length === 0 ? (
         <div className="mt-8 rounded-2xl border border-dashed border-black/15 bg-white px-4 py-10 text-center">
           <p className="text-[#6f675f]">Todavía no confirmaste ningún pedido.</p>
@@ -96,7 +83,7 @@ export function OrdersView() {
                   onClick={() => send(order)}
                   className="mt-4 rounded-full bg-[#128C7E] px-4 py-2 text-sm font-semibold text-white"
                 >
-                  Enviar a {STORE_WHATSAPP_LABEL}
+                  Enviar
                 </button>
               </li>
             );

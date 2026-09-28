@@ -6,7 +6,7 @@ import { QuantityControl } from "@/components/QuantityControl";
 import { useCart } from "@/components/CartProvider";
 import { formatMoney, formatShipDate, lineTotal, parseAmount } from "@/lib/format";
 import { saveOrder } from "@/lib/orders-storage";
-import { sendOrderPdf, STORE_WHATSAPP_LABEL } from "@/lib/whatsapp";
+import { openOrderOnWhatsApp, STORE_WHATSAPP_LABEL } from "@/lib/whatsapp";
 import type { Order, Product } from "@/lib/types";
 
 export function CartView({ products }: { products: Product[] }) {
@@ -21,8 +21,6 @@ export function CartView({ products }: { products: Product[] }) {
   const [shippingCost, setShippingCost] = useState("");
   const [estimatedShipDate, setEstimatedShipDate] = useState("");
   const [error, setError] = useState("");
-  const [notice, setNotice] = useState("");
-  const [sending, setSending] = useState(false);
 
   const lines = items.map((item) => ({ item, product: byId.get(item.productId) }));
   const known = lines.filter((line) => line.product);
@@ -36,7 +34,7 @@ export function CartView({ products }: { products: Product[] }) {
       ? null
       : subtotal + (delivery === "envio" ? (shippingAmount ?? 0) : 0);
 
-  async function submit(event: FormEvent) {
+  function submit(event: FormEvent) {
     event.preventDefault();
     if (!customerName.trim() || !phone.trim()) {
       setError("Completá el nombre y el teléfono para armar el pedido.");
@@ -80,25 +78,10 @@ export function CartView({ products }: { products: Product[] }) {
       })),
     };
 
-    setSending(true);
     setError("");
-    setNotice("");
-    try {
-      const result = await sendOrderPdf(order);
-      saveOrder(order);
-      clear();
-      if (result === "downloaded") {
-        setNotice(
-          "Se descargó el PDF. Enviá ese archivo, sin link, al WhatsApp " + STORE_WHATSAPP_LABEL + ".",
-        );
-      }
-    } catch (caught) {
-      if (!(caught instanceof DOMException && caught.name === "AbortError")) {
-        setError("No se pudo preparar el archivo. Probá de nuevo.");
-      }
-    } finally {
-      setSending(false);
-    }
+    saveOrder(order);
+    clear();
+    openOrderOnWhatsApp(order);
   }
 
   return (
@@ -106,11 +89,9 @@ export function CartView({ products }: { products: Product[] }) {
       <section>
         <h1 className="text-2xl font-semibold tracking-tight">Tu pedido</h1>
         <p className="mt-1 text-sm text-[#6f675f]">
-          Se manda un mensaje con el archivo PDF a {STORE_WHATSAPP_LABEL}. Sin link.
+          Se abre el chat de WhatsApp {STORE_WHATSAPP_LABEL} con la nota de pedido. En WhatsApp
+          solo tenés que tocar Enviar.
         </p>
-        {notice ? (
-          <p className="mt-4 rounded-2xl bg-[#e7f6f2] px-4 py-3 text-sm text-[#0d6b60]">{notice}</p>
-        ) : null}
         {lines.length === 0 ? (
           <div className="mt-8 rounded-2xl border border-dashed border-black/15 bg-white px-4 py-10 text-center">
             <p className="text-[#6f675f]">Todavía no agregaste productos.</p>
@@ -245,13 +226,13 @@ export function CartView({ products }: { products: Product[] }) {
         <button
           type="submit"
           className="mt-4 w-full rounded-full bg-[#128C7E] px-4 py-3 text-sm font-semibold text-white disabled:bg-[#ece7e1] disabled:text-[#8a8178]"
-          disabled={known.length === 0 || sending}
+          disabled={known.length === 0}
         >
-          {sending ? "Preparando el archivo…" : `Enviar a ${STORE_WHATSAPP_LABEL}`}
+          Enviar
         </button>
         <p className="mt-3 text-xs leading-relaxed text-[#6f675f]">
-          El mensaje dice «Hola Felipe, ¿cómo estás? Este es mi pedido» y adjunta la nota en PDF
-          para descargar. No se manda un link.
+          Igual que en Bebu: se abre tu chat {STORE_WHATSAPP_LABEL} con la nota ya escrita. Solo
+          falta tocar Enviar en WhatsApp.
         </p>
         <Link href="/pedidos" className="mt-3 inline-flex text-sm font-semibold text-[#e92026]">
           Ver pedidos guardados
