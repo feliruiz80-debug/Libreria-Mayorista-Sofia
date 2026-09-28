@@ -7,7 +7,9 @@ App para que los clientes vean el catálogo y armen un pedido. Los productos, pr
 - Buscar productos por nombre, marca o código
 - Filtrar por sección y marca
 - Ver precio, presentación, stock y la ficha del sitio
-- Armar un pedido y copiarlo o enviarlo por WhatsApp
+- Armar un pedido y enviarlo por WhatsApp al `351 676-8638`, con el detalle y un link al PDF
+
+En el celular se puede agregar a la pantalla de inicio: la barra de abajo tiene Inicio, Promos, Buscar y Carrito.
 
 Los pedidos se guardan en el navegador del cliente. La hoja se usa para leer el catálogo; para que los pedidos se escriban solos en Sheets hace falta una cuenta de servicio de Google, que esta etapa no incluye.
 
