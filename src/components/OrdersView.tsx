@@ -23,8 +23,7 @@ export function OrdersView() {
 
   return (
     <div className="px-4 py-4">
-      <p className="kicker">Archivo</p>
-      <h1 className="display mt-1 text-4xl leading-none">Mis pedidos</h1>
+      <h1 className="text-3xl font-semibold tracking-tight">Mis pedidos</h1>
       <p className="muted mt-2 text-sm">
         Quedan guardados en este navegador.
         {label ? ` Enviar abre de nuevo el chat ${label}.` : ""}

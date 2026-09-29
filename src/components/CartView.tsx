@@ -104,8 +104,7 @@ export function CartView({ products }: { products: Product[] }) {
   return (
     <div className="grid gap-4 px-4 py-4">
       <section className="panel p-4">
-        <p className="kicker">Pedido</p>
-        <h1 className="display mt-1 text-4xl leading-none">Tu pedido</h1>
+        <h1 className="text-2xl font-semibold tracking-tight">Tu pedido</h1>
         <p className="muted mt-1 text-sm">
           {label
             ? `Al confirmar se abre WhatsApp ${label} con el pedido escrito.`
@@ -167,7 +166,7 @@ export function CartView({ products }: { products: Product[] }) {
       </section>
 
       <form onSubmit={review} className="panel grid gap-3 p-4">
-        <h2 className="display text-3xl leading-none">Datos del pedido</h2>
+        <h2 className="text-lg font-semibold">Datos del pedido</h2>
         <Field label="Nombre y apellido" value={customerName} onChange={setCustomerName} autoComplete="name" required />
         <Field
           label="Razón social / nombre del comercio"
@@ -234,7 +233,7 @@ export function CartView({ products }: { products: Product[] }) {
       <dialog ref={dialogRef} className="panel" aria-labelledby="confirmar-pedido">
         {draft ? (
           <div className="grid gap-3">
-            <h2 id="confirmar-pedido" className="display text-3xl leading-none">
+            <h2 id="confirmar-pedido" className="text-xl font-semibold">
               Pedido N° {orderCode(draft)}
             </h2>
             <p className="text-sm">
@@ -284,7 +283,7 @@ function Choice({ selected, onClick, label }: { selected: boolean; onClick: () =
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`min-h-12 border px-3 py-3 text-sm font-semibold ${
+      className={`min-h-12 rounded-full border px-3 py-3 text-sm font-semibold ${
         selected
           ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
           : "btn-secondary"
