@@ -284,7 +284,7 @@ function Choice({ selected, onClick, label }: { selected: boolean; onClick: () =
       type="button"
       onClick={onClick}
       aria-pressed={selected}
-      className={`min-h-12 border px-3 py-3 text-sm font-semibold ${
+      className={`min-h-12 rounded-[1.75rem] border px-3 py-3 text-sm font-semibold ${
         selected
           ? "border-[var(--color-primary)] bg-[var(--color-primary)] text-white"
           : "btn-secondary"

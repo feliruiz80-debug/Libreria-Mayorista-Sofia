@@ -1,20 +1,17 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
-import { Cormorant_Garamond, Geist, Geist_Mono } from "next/font/google";
+import { Cormorant_Garamond, Outfit } from "next/font/google";
 import { BottomNav } from "@/components/BottomNav";
 import { CartProvider } from "@/components/CartProvider";
 import { FloatingCart } from "@/components/FloatingCart";
 import { SiteHeader } from "@/components/SiteHeader";
+import { UpdateButton } from "@/components/UpdateButton";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const outfit = Outfit({
+  variable: "--font-outfit",
   subsets: ["latin"],
-});
-
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
-  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 const display = Cormorant_Garamond({
@@ -51,16 +48,14 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
-    <html
-      lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} ${display.variable} h-full antialiased`}
-    >
+    <html lang="es" className={`${outfit.variable} ${display.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col text-[var(--color-text)]">
         <CartProvider>
           <SiteHeader />
           <main className="mx-auto w-full max-w-lg flex-1 pb-48">{children}</main>
           <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30">
             <div className="pointer-events-auto mx-auto grid max-w-lg">
+              <UpdateButton />
               <FloatingCart />
               <Suspense fallback={null}>
                 <BottomNav />
