@@ -16,7 +16,7 @@ export function FloatingCart() {
   return (
     <Link
       href="/carrito"
-      className="glass lift flex min-h-14 items-center justify-between gap-3 px-4 py-3"
+      className="float-chip flex min-h-11 items-center justify-between gap-3 px-2 py-1"
       aria-label={`Ver pedido, ${count} productos`}
     >
       <span className="text-sm font-semibold">

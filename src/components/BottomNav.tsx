@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname, useRouter, useSearchParams } from "next/navigation";
+import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
 import { useCart } from "@/components/CartProvider";
 
 const items = [
@@ -13,10 +14,64 @@ const items = [
 
 export function BottomNav() {
   const pathname = usePathname();
+  const router = useRouter();
   const searchParams = useSearchParams();
   const { count } = useCart();
   const section = searchParams.get("seccion");
   const searching = searchParams.get("buscar") === "1";
+  const gesture = useRef({
+    y: null as number | null,
+    last: null as number | null,
+    swiped: false,
+    pathname,
+    searching,
+    query: searchParams.toString(),
+  });
+
+  useEffect(() => {
+    gesture.current.pathname = pathname;
+    gesture.current.searching = searching;
+    gesture.current.query = searchParams.toString();
+  });
+
+  useEffect(() => {
+    function onMove(event: PointerEvent) {
+      if (gesture.current.y == null) return;
+      gesture.current.last = event.clientY;
+    }
+
+    function onUp(event: PointerEvent) {
+      const state = gesture.current;
+      if (state.y == null) return;
+      const end = event.type === "pointercancel" ? (state.last ?? state.y) : event.clientY;
+      const delta = state.y - end;
+      state.y = null;
+      state.last = null;
+      if (delta > 42) {
+        state.swiped = true;
+        const params = new URLSearchParams(state.pathname === "/catalogo" ? state.query : "");
+        params.set("buscar", "1");
+        const href = `/catalogo?${params.toString()}`;
+        if (state.pathname === "/catalogo") router.replace(href, { scroll: false });
+        else router.push(href);
+      } else if (delta < -42 && state.pathname === "/catalogo" && state.searching) {
+        state.swiped = true;
+        const params = new URLSearchParams(state.query);
+        params.delete("buscar");
+        const query = params.toString();
+        router.replace(query ? `/catalogo?${query}` : "/catalogo", { scroll: false });
+      }
+    }
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [router]);
 
   function searchHref() {
     const params = new URLSearchParams(pathname === "/catalogo" ? searchParams.toString() : "");
@@ -24,6 +79,13 @@ export function BottomNav() {
     else params.set("buscar", "1");
     const query = params.toString();
     return query ? `/catalogo?${query}` : "/catalogo";
+  }
+
+  function onPointerDown(event: ReactPointerEvent) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    gesture.current.y = event.clientY;
+    gesture.current.last = event.clientY;
+    gesture.current.swiped = false;
   }
 
   function active(id: (typeof items)[number]["id"]) {
@@ -35,14 +97,25 @@ export function BottomNav() {
   }
 
   return (
-    <nav className="glass" aria-label="Navegación principal">
+    <nav
+      className="dock"
+      aria-label="Navegación principal"
+      onPointerDown={onPointerDown}
+    >
       <div className="grid grid-cols-4">
         {items.map((item) => {
           const isActive = active(item.id);
           return (
             <Link
               key={item.id}
+              draggable={false}
+              onDragStart={(event) => event.preventDefault()}
               href={item.id === "search" ? searchHref() : item.href}
+              onClick={(event) => {
+                if (!gesture.current.swiped) return;
+                event.preventDefault();
+                gesture.current.swiped = false;
+              }}
               aria-current={isActive ? "page" : undefined}
               aria-expanded={item.id === "search" ? searching : undefined}
               className={`relative flex min-h-16 flex-col items-center justify-center gap-1 px-2 py-2 text-xs font-semibold ${

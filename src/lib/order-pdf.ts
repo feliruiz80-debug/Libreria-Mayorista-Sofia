@@ -1,5 +1,6 @@
 import type { Order } from "@/lib/types";
 import { formatDateTime, formatMoney, formatShipDate, orderTotal } from "@/lib/format";
+import { logoMarkPdf } from "@/lib/logo-pdf-data";
 import { orderCode } from "@/lib/order-code";
 
 const WIN_ANSI: Record<string, string> = {
@@ -113,16 +114,28 @@ class Sheet {
     value: string,
     align: "left" | "right" = "left",
     width = 0,
+    tracking = 0,
   ) {
     const shown = pdfText(value);
-    const left = align === "right" ? x + width - textWidth(value, size) : x;
+    const extra = tracking * Math.max(0, [...value].length - 1);
+    const left = align === "right" ? x + width - textWidth(value, size) - extra : x;
     this.ops.push(
       "BT",
       `/${font} ${n(size)} Tf`,
+      `${n(tracking)} Tc`,
       `${n(left)} ${n(y)} Td`,
       `(${shown}) Tj`,
+      "0 Tc",
       "ET",
     );
+  }
+
+  rule(x1: number, x2: number, y: number) {
+    this.ops.push("0.45 w", `${n(x1)} ${n(y)} m ${n(x2)} ${n(y)} l S`);
+  }
+
+  raw(value: string) {
+    this.ops.push(value);
   }
 
   toString() {
@@ -130,29 +143,50 @@ class Sheet {
   }
 }
 
-function drawHeader(page: Sheet, order: Order) {
-  page.fill("#014d9b");
-  page.rect(0, 758, 595, 84);
-  page.fill("#ffffff");
-  page.text("F1", 9, 36, 812, "LIBRERÍA MAYORISTA SOFÍA");
-  page.text("F2", 16, 36, 788, "CHECKLIST DE PEDIDO");
-  page.text("F1", 8, 36, 768, "Para imprimir y preparar");
-  page.text("F2", 10, 340, 812, orderCode(order), "right", 220);
-  page.text("F1", 9, 340, 796, formatDateTime(order.createdAt), "right", 220);
-  const badge = order.delivery === "envio" ? "ENVÍO" : "RETIRO EN LOCAL";
-  page.text("F2", 9, 340, 778, badge, "right", 220);
+function decode64(value: string): Uint8Array {
+  const binary = atob(value);
+  const bytes = new Uint8Array(binary.length);
+  for (let index = 0; index < binary.length; index += 1) bytes[index] = binary.charCodeAt(index);
+  return bytes;
 }
 
-function infoCard(page: Sheet, x: number, y: number, w: number, title: string, lines: string[]) {
+const logoRgb = decode64(logoMarkPdf.rgb);
+const logoAlpha = decode64(logoMarkPdf.alpha);
+
+/** Cabecera en crema: el logo entra sin placa de color detrás. */
+function drawHeader(page: Sheet, order: Order): number {
   page.fill("#f6f1ea");
-  page.rect(x, y, w, 112);
+  page.rect(0, 0, 595, 842);
+  const logoW = 78;
+  const logoH = (logoW * logoMarkPdf.height) / logoMarkPdf.width;
+  const x = (595 - logoW) / 2;
+  const y = 842 - 28 - logoH;
+  page.raw(`q\n${n(logoW)} 0 0 ${n(logoH)} ${n(x)} ${n(y)} cm\n/Im1 Do\nQ`);
+  const lineY = y - 12;
   page.stroke("#014d9b");
-  page.box(x, y, w, 112);
+  page.rule(214, 381, lineY);
   page.fill("#014d9b");
-  page.text("F2", 8, x + 12, y + 94, title);
+  const title = "PEDIDO";
+  const titleSize = 10;
+  const tracking = 1.8;
+  const titleW = textWidth(title, titleSize) + tracking * (title.length - 1);
+  page.text("F2", titleSize, (595 - titleW) / 2, lineY - 16, title, "left", 0, tracking);
+  const delivery = order.delivery === "envio" ? "Envío" : "Retiro en local";
+  const meta = `${orderCode(order)}  ·  ${formatDateTime(order.createdAt)}  ·  ${delivery}`;
+  page.fill("#1b1d21");
+  const metaW = textWidth(meta, 8);
+  page.text("F1", 8, (595 - metaW) / 2, lineY - 30, clip(meta, 92));
+  return lineY - 48;
+}
+
+function infoBlock(page: Sheet, x: number, top: number, title: string, lines: string[]) {
+  page.fill("#014d9b");
+  page.text("F2", 8, x, top, title, "left", 0, 0.8);
+  page.stroke("#014d9b");
+  page.rule(x, x + 230, top - 6);
   page.fill("#1b1d21");
   lines.slice(0, 4).forEach((line, index) => {
-    page.text("F1", 10, x + 12, y + 74 - index * 16, clip(line, 42));
+    page.text("F1", 10, x, top - 24 - index * 14, clip(line, 40));
   });
 }
 
@@ -171,7 +205,7 @@ export function buildOrderPdf(order: Order): Uint8Array {
   const pages: Sheet[] = [];
   let page = new Sheet();
   pages.push(page);
-  drawHeader(page, order);
+  const contentTop = drawHeader(page, order);
 
   const clientLines = [
     order.customerName || "Cliente",
@@ -187,8 +221,8 @@ export function buildOrderPdf(order: Order): Uint8Array {
     order.delivery === "envio"
       ? ["Envío a domicilio", ...addressLines, `Costo: ${shipping}`, estimate]
       : ["Retiro en el local", "Sin costo de envío", estimate];
-  infoCard(page, 32, 628, 258, "CLIENTE", clientLines);
-  infoCard(page, 306, 628, 257, "ENVÍO", shippingLines);
+  infoBlock(page, 36, contentTop, "CLIENTE", clientLines);
+  infoBlock(page, 318, contentTop, "ENTREGA", shippingLines);
 
   const columns = [
     { label: "Código", x: 54, w: 72 },
@@ -197,30 +231,27 @@ export function buildOrderPdf(order: Order): Uint8Array {
     { label: "P. unit.", x: 376, w: 76 },
     { label: "Importe", x: 454, w: 94 },
   ];
-  let y = 590;
+  let y = contentTop - 96;
 
   const header = () => {
-    page.fill("#1b1d21");
-    page.rect(32, y - 6, 531, 22);
-    page.fill("#ffffff");
+    page.stroke("#014d9b");
+    page.rule(36, 559, y + 14);
+    page.fill("#014d9b");
     for (const column of columns) {
-      page.text("F2", 8, column.x, y, column.label);
+      page.text("F2", 8, column.x, y, column.label, "left", 0, 0.4);
     }
-    y -= 28;
+    page.stroke("#014d9b");
+    page.rule(36, 559, y - 6);
+    y -= 24;
   };
   header();
 
-  order.items.forEach((item, index) => {
+  order.items.forEach((item) => {
     if (y < 120) {
       page = new Sheet();
       pages.push(page);
-      drawHeader(page, order);
-      y = 720;
+      y = drawHeader(page, order) - 8;
       header();
-    }
-    if (index % 2 === 0) {
-      page.fill("#f6f1ea");
-      page.rect(32, y - 16, 531, 34);
     }
     const line = item.unitPrice == null ? null : item.unitPrice * item.quantity;
     page.stroke("#014d9b");
@@ -248,33 +279,32 @@ export function buildOrderPdf(order: Order): Uint8Array {
       columns[3].w,
     );
     page.text("F2", 9, columns[4].x, y, line == null ? "A confirmar" : money(line), "right", columns[4].w);
-    y -= 36;
+    page.stroke("#014d9b");
+    page.rule(36, 559, y - 16);
+    y -= 32;
   });
 
   y -= 8;
   if (y < 120) {
     page = new Sheet();
     pages.push(page);
-    drawHeader(page, order);
-    y = 720;
+    y = drawHeader(page, order) - 8;
   }
   const units = order.items.reduce((sum, item) => sum + item.quantity, 0);
-  page.fill("#f6f1ea");
-  page.rect(330, y - 78, 233, 94);
   page.stroke("#014d9b");
-  page.box(330, y - 78, 233, 94);
+  page.rule(330, 559, y + 10);
   page.fill("#1b1d21");
-  page.text("F1", 9, 344, y, "Unidades");
-  page.text("F1", 9, 344, y - 16, "Subtotal");
-  page.text("F1", 9, 344, y - 32, "Envío");
-  page.text("F1", 9, 430, y, String(units), "right", 118);
-  page.text("F1", 9, 430, y - 16, subtotal == null ? "A confirmar" : money(subtotal), "right", 118);
-  page.text("F1", 9, 430, y - 32, shipping, "right", 118);
+  page.text("F1", 9, 344, y - 8, "Unidades");
+  page.text("F1", 9, 344, y - 24, "Subtotal");
+  page.text("F1", 9, 344, y - 40, "Envío");
+  page.text("F1", 9, 430, y - 8, String(units), "right", 118);
+  page.text("F1", 9, 430, y - 24, subtotal == null ? "A confirmar" : money(subtotal), "right", 118);
+  page.text("F1", 9, 430, y - 40, shipping, "right", 118);
+  page.stroke("#014d9b");
+  page.rule(330, 559, y - 50);
   page.fill("#014d9b");
-  page.rect(330, y - 78, 233, 26);
-  page.fill("#ffffff");
-  page.text("F2", 10, 344, y - 64, "TOTAL");
-  page.text("F2", 10, 430, y - 64, payable == null ? "A confirmar" : money(payable), "right", 118);
+  page.text("F2", 11, 344, y - 68, "TOTAL", "left", 0, 1.1);
+  page.text("F2", 11, 430, y - 68, payable == null ? "A confirmar" : money(payable), "right", 118);
 
   page.fill("#1b1d21");
   const note = order.note.trim() ? `Obs.: ${order.note.trim()}` : "Sin observaciones";
@@ -285,37 +315,69 @@ export function buildOrderPdf(order: Order): Uint8Array {
 }
 
 function assemble(streams: string[]): Uint8Array {
-  const objects: string[] = [];
-  objects[1] = "<< /Type /Catalog /Pages 2 0 R >>";
-  objects[3] =
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>";
-  objects[4] =
-    "<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>";
+  const chunks: Uint8Array[] = [];
+  const encoder = new TextEncoder();
+  let length = 0;
+  const offsets: number[] = [];
 
-  const pageIds: number[] = [];
-  let nextId = 5;
-  for (const stream of streams) {
-    const contentId = nextId++;
-    const pageId = nextId++;
-    pageIds.push(pageId);
-    objects[contentId] = `<< /Length ${stream.length} >>\nstream\n${stream}\nendstream`;
-    objects[pageId] =
-      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents ${contentId} 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> >> >>`;
+  function add(part: string | Uint8Array) {
+    const bytes = typeof part === "string" ? encoder.encode(part) : part;
+    chunks.push(bytes);
+    length += bytes.length;
   }
-  objects[2] =
-    `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageIds.length} >>`;
 
-  let pdf = "%PDF-1.4\n";
-  const offsets = [0];
-  for (let id = 1; id < objects.length; id += 1) {
-    offsets[id] = pdf.length;
-    pdf += `${id} 0 obj\n${objects[id]}\nendobj\n`;
+  function addObject(id: number, body: Array<string | Uint8Array>) {
+    offsets[id] = length;
+    add(`${id} 0 obj\n`);
+    for (const part of body) add(part);
+    add("\nendobj\n");
   }
-  const xref = pdf.length;
-  pdf += `xref\n0 ${objects.length}\n0000000000 65535 f \n`;
-  for (let id = 1; id < objects.length; id += 1) {
-    pdf += `${String(offsets[id]).padStart(10, "0")} 00000 n \n`;
+
+  add("%PDF-1.4\n");
+  add(new Uint8Array([0x25, 0xff, 0xff, 0xff, 0xff, 0x0a]));
+
+  const firstContent = 7;
+  const pageIds = streams.map((_, index) => firstContent + index * 2 + 1);
+  addObject(1, ["<< /Type /Catalog /Pages 2 0 R >>"]);
+  addObject(2, [
+    `<< /Type /Pages /Kids [${pageIds.map((id) => `${id} 0 R`).join(" ")}] /Count ${pageIds.length} >>`,
+  ]);
+  addObject(3, ["<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica /Encoding /WinAnsiEncoding >>"]);
+  addObject(4, ["<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold /Encoding /WinAnsiEncoding >>"]);
+  addObject(5, [
+    `<< /Type /XObject /Subtype /Image /Width ${logoMarkPdf.width} /Height ${logoMarkPdf.height} /ColorSpace /DeviceRGB /BitsPerComponent 8 /Filter /FlateDecode /Length ${logoRgb.length} /SMask 6 0 R >>\nstream\n`,
+    logoRgb,
+    "\nendstream",
+  ]);
+  addObject(6, [
+    `<< /Type /XObject /Subtype /Image /Width ${logoMarkPdf.width} /Height ${logoMarkPdf.height} /ColorSpace /DeviceGray /BitsPerComponent 8 /Filter /FlateDecode /Length ${logoAlpha.length} >>\nstream\n`,
+    logoAlpha,
+    "\nendstream",
+  ]);
+
+  streams.forEach((stream, index) => {
+    const contentId = firstContent + index * 2;
+    const pageId = contentId + 1;
+    const bytes = encoder.encode(stream);
+    addObject(contentId, [`<< /Length ${bytes.length} >>\nstream\n`, bytes, "\nendstream"]);
+    addObject(pageId, [
+      `<< /Type /Page /Parent 2 0 R /MediaBox [0 0 595 842] /Contents ${contentId} 0 R /Resources << /Font << /F1 3 0 R /F2 4 0 R >> /XObject << /Im1 5 0 R >> >> >>`,
+    ]);
+  });
+
+  const xref = length;
+  let trailer = `xref\n0 ${offsets.length}\n0000000000 65535 f \n`;
+  for (let id = 1; id < offsets.length; id += 1) {
+    trailer += `${String(offsets[id]).padStart(10, "0")} 00000 n \n`;
   }
-  pdf += `trailer\n<< /Size ${objects.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
-  return new TextEncoder().encode(pdf);
+  trailer += `trailer\n<< /Size ${offsets.length} /Root 1 0 R >>\nstartxref\n${xref}\n%%EOF`;
+  add(trailer);
+
+  const out = new Uint8Array(length);
+  let cursor = 0;
+  for (const chunk of chunks) {
+    out.set(chunk, cursor);
+    cursor += chunk.length;
+  }
+  return out;
 }

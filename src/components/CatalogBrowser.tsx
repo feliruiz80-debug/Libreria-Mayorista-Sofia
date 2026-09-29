@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef } from "react";
+import { useEffect, useMemo, useRef, type PointerEvent as ReactPointerEvent } from "react";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { ProductCard } from "@/components/ProductCard";
@@ -29,6 +29,8 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
   const brand = searchParams.get("marca") ?? "";
   const focusSearch = searchParams.get("buscar") === "1";
   const searchRef = useRef<HTMLInputElement>(null);
+  const sheetRef = useRef<HTMLFormElement>(null);
+  const drag = useRef<{ y: number; dy: number } | null>(null);
 
   useEffect(() => {
     if (focusSearch) searchRef.current?.focus();
@@ -69,6 +71,27 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
     router.replace(suffix ? `/catalogo?${suffix}` : "/catalogo", { scroll: false });
   }
 
+  function onHandleStart(event: ReactPointerEvent) {
+    if (event.pointerType === "mouse" && event.button !== 0) return;
+    drag.current = { y: event.clientY, dy: 0 };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }
+
+  function onHandleMove(event: ReactPointerEvent) {
+    if (!drag.current || !sheetRef.current) return;
+    const dy = Math.max(0, event.clientY - drag.current.y);
+    drag.current.dy = dy;
+    sheetRef.current.style.transform = `translateY(${dy}px)`;
+  }
+
+  function onHandleEnd() {
+    if (!drag.current || !sheetRef.current) return;
+    const dy = drag.current.dy;
+    drag.current = null;
+    if (dy > 72) closeSearch();
+    else sheetRef.current.style.transform = "";
+  }
+
   return (
     <div className="px-4 py-4">
       <div className="flex items-center gap-3">
@@ -83,14 +106,29 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
 
       {focusSearch ? (
         <form
-          className="glass fixed inset-x-3 top-[calc(5.4rem+env(safe-area-inset-top))] z-40 mx-auto grid max-w-lg gap-2 p-3"
+          ref={sheetRef}
+          role="search"
+          className="search-sheet fixed inset-x-3 z-40 mx-auto grid max-w-lg gap-2"
           onSubmit={(event) => event.preventDefault()}
         >
-          <div className="flex items-center justify-between gap-3">
-            <p className="text-sm font-semibold">Buscar</p>
-            <button type="button" className="btn btn-secondary min-h-10 px-3 text-sm" onClick={closeSearch}>
-              Cerrar
-            </button>
+          <div
+            className="search-handle"
+            onPointerDown={onHandleStart}
+            onPointerMove={onHandleMove}
+            onPointerUp={onHandleEnd}
+            onPointerCancel={onHandleEnd}
+          >
+            <span className="search-grab" aria-hidden="true" />
+            <div className="flex items-center justify-between gap-3">
+              <p className="text-sm font-semibold">Buscar</p>
+              <button
+                type="button"
+                className="min-h-10 px-1 text-sm font-semibold text-[var(--color-primary)]"
+                onClick={closeSearch}
+              >
+                Cerrar
+              </button>
+            </div>
           </div>
           <label className="block text-sm font-semibold">
             <span className="sr-only">Buscar</span>
