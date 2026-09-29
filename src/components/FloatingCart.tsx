@@ -22,7 +22,7 @@ export function FloatingCart() {
       <span className="text-sm font-semibold">
         {count} {count === 1 ? "producto" : "productos"}
       </span>
-      <span className="text-base font-semibold">{total == null ? "A confirmar" : formatMoney(total)}</span>
+      <span className="price text-base">{total == null ? "A confirmar" : formatMoney(total)}</span>
     </Link>
   );
 }

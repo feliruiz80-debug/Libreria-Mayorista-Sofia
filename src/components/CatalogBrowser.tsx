@@ -73,6 +73,8 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
 
   function onHandleStart(event: ReactPointerEvent) {
     if (event.pointerType === "mouse" && event.button !== 0) return;
+    const target = event.target as HTMLElement;
+    if (target.closest("input, button")) return;
     drag.current = { y: event.clientY, dy: 0 };
     event.currentTarget.setPointerCapture(event.pointerId);
   }
@@ -108,29 +110,18 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
         <form
           ref={sheetRef}
           role="search"
-          className="search-sheet fixed inset-x-3 z-40 mx-auto grid max-w-lg gap-2"
+          className="search-sheet fixed inset-x-3 z-40 mx-auto max-w-lg"
           onSubmit={(event) => event.preventDefault()}
+          onPointerDown={onHandleStart}
+          onPointerMove={onHandleMove}
+          onPointerUp={onHandleEnd}
+          onPointerCancel={onHandleEnd}
         >
-          <div
-            className="search-handle"
-            onPointerDown={onHandleStart}
-            onPointerMove={onHandleMove}
-            onPointerUp={onHandleEnd}
-            onPointerCancel={onHandleEnd}
-          >
-            <span className="search-grab" aria-hidden="true" />
-            <div className="flex items-center justify-between gap-3">
-              <p className="text-sm font-semibold">Buscar</p>
-              <button
-                type="button"
-                className="min-h-10 px-1 text-sm font-semibold text-[var(--color-primary)]"
-                onClick={closeSearch}
-              >
-                Cerrar
-              </button>
-            </div>
-          </div>
-          <label className="block text-sm font-semibold">
+          <svg className="h-5 w-5 shrink-0 text-[var(--color-primary)]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+            <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.8" />
+            <path d="m20 20-3.2-3.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+          </svg>
+          <label className="min-w-0 flex-1">
             <span className="sr-only">Buscar</span>
             <input
               ref={searchRef}
@@ -141,32 +132,9 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
               aria-label="Buscar"
             />
           </label>
-          <label className="block text-sm font-semibold">
-            Sección
-            <select
-              value={section}
-              onChange={(event) => update({ seccion: event.target.value })}
-              className="control mt-1"
-            >
-              <option value="">Todas las secciones</option>
-              {catalog.sections.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
-          <label className="block text-sm font-semibold">
-            Marca
-            <select value={brand} onChange={(event) => update({ marca: event.target.value })} className="control mt-1">
-              <option value="">Todas las marcas</option>
-              {catalog.brands.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
-          </label>
+          <button type="button" className="search-close" onClick={closeSearch} aria-label="Cerrar búsqueda">
+            ×
+          </button>
         </form>
       ) : null}
 
