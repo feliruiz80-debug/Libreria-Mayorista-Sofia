@@ -45,11 +45,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html lang="es" className={`${inter.variable} h-full antialiased`}>
       <body className="flex min-h-full flex-col text-[var(--color-text)]">
         <CartProvider>
+          <UpdateButton />
           <SiteHeader />
           <main className="mx-auto w-full max-w-lg flex-1 pb-48">{children}</main>
           <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30">
             <div className="pointer-events-auto mx-auto grid max-w-lg">
-              <UpdateButton />
               <FloatingCart />
               <Suspense fallback={null}>
                 <BottomNav />

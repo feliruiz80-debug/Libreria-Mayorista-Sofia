@@ -211,21 +211,52 @@ dialog.panel::backdrop {
   box-shadow: 0 10px 24px rgba(1, 77, 155, 0.22);
 }
 
-/* Buscador fino que sube desde la barra. Sin filtros. */
+/* Sección de búsqueda: sube desde la barra hasta dejar ver el logo. */
 .search-sheet {
+  position: fixed;
+  z-index: 40;
+  left: 0;
+  right: 0;
+  top: calc(5.35rem + env(safe-area-inset-top));
   bottom: calc(4.55rem + env(safe-area-inset-bottom));
+  margin-inline: auto;
+  max-width: 32rem;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: var(--color-bg);
+  border: 1px solid var(--color-line);
+  border-bottom: none;
+  border-radius: var(--radius) var(--radius) 0 0;
+  box-shadow: 0 -18px 40px rgba(27, 29, 33, 0.08);
+  padding: 0.2rem 1rem 0.75rem;
+  animation: search-rise 340ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.search-handle {
+  touch-action: none;
+}
+
+.search-grab {
+  display: block;
+  width: 2.25rem;
+  height: 3px;
+  margin: 0.35rem auto 0.45rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 45%, transparent);
+}
+
+.search-field {
   display: flex;
   align-items: center;
   gap: 0.35rem;
   background: white;
   border: 1px solid var(--color-line);
   border-radius: 999px;
-  box-shadow: 0 10px 28px rgba(27, 29, 33, 0.1);
   padding: 0.15rem 0.35rem 0.15rem 0.85rem;
-  animation: search-rise 280ms cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-.search-sheet .control {
+.search-field .control {
   min-height: 44px;
   border: none;
   background: transparent;
@@ -234,7 +265,7 @@ dialog.panel::backdrop {
   font-weight: 400;
 }
 
-.search-sheet .search-close {
+.search-close {
   display: grid;
   height: 2.25rem;
   width: 2.25rem;
@@ -242,7 +273,44 @@ dialog.panel::backdrop {
   place-items: center;
   border-radius: 999px;
   color: var(--color-primary);
+  font-size: 1.35rem;
   font-weight: 600;
+  line-height: 1;
+}
+
+.search-body {
+  min-height: 0;
+  flex: 1;
+  overflow: auto;
+}
+
+/* El aviso de versión baja desde el borde superior. */
+.update-banner {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 50;
+  display: flex;
+  justify-content: center;
+  padding: max(0.55rem, env(safe-area-inset-top)) 1rem 0;
+  pointer-events: none;
+  animation: update-drop 340ms cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.update-banner .btn {
+  pointer-events: auto;
+  min-width: 11rem;
+  box-shadow: 0 10px 24px rgba(1, 77, 155, 0.22);
+}
+
+@keyframes update-drop {
+  from {
+    transform: translateY(-120%);
+  }
+  to {
+    transform: translateY(0);
+  }
 }
 
 @keyframes search-rise {
@@ -257,7 +325,8 @@ dialog.panel::backdrop {
 @media (prefers-reduced-motion: reduce) {
   .btn,
   .lift,
-  .search-sheet {
+  .search-sheet,
+  .update-banner {
     transition: none;
     animation: none;
   }

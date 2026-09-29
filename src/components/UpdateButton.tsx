@@ -63,10 +63,10 @@ export function UpdateButton() {
   if (!waiting) return null;
 
   return (
-    <div className="px-3 pb-2">
+    <div className="update-banner">
       <button
         type="button"
-        className="btn btn-primary w-full"
+        className="btn btn-primary"
         onClick={() => {
           asked.current = true;
           waiting.postMessage({ type: "SKIP_WAITING" });

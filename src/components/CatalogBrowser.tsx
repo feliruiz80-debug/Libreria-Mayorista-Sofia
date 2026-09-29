@@ -29,7 +29,7 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
   const brand = searchParams.get("marca") ?? "";
   const focusSearch = searchParams.get("buscar") === "1";
   const searchRef = useRef<HTMLInputElement>(null);
-  const sheetRef = useRef<HTMLFormElement>(null);
+  const sheetRef = useRef<HTMLElement>(null);
   const drag = useRef<{ y: number; dy: number } | null>(null);
 
   useEffect(() => {
@@ -94,6 +94,26 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
     else sheetRef.current.style.transform = "";
   }
 
+  const productList =
+    grouped.length === 0 ? (
+      <p className="panel muted mt-6 px-4 py-8 text-center" role="status">
+        No hay productos para esa búsqueda.
+      </p>
+    ) : (
+      <div className="mt-5 space-y-6">
+        {grouped.map((group) => (
+          <section key={group.name} aria-label={group.name}>
+            {section ? null : <h2 className="kicker">{group.name}</h2>}
+            <div className={`grid grid-cols-2 gap-3 ${section ? "" : "mt-3"}`}>
+              {group.products.map((product) => (
+                <ProductCard key={product.id} product={product} />
+              ))}
+            </div>
+          </section>
+        ))}
+      </div>
+    );
+
   return (
     <div className="px-4 py-4">
       <div className="flex items-center gap-3">
@@ -107,58 +127,40 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
       </p>
 
       {focusSearch ? (
-        <form
-          ref={sheetRef}
-          role="search"
-          className="search-sheet fixed inset-x-3 z-40 mx-auto max-w-lg"
-          onSubmit={(event) => event.preventDefault()}
-          onPointerDown={onHandleStart}
-          onPointerMove={onHandleMove}
-          onPointerUp={onHandleEnd}
-          onPointerCancel={onHandleEnd}
-        >
-          <svg className="h-5 w-5 shrink-0 text-[var(--color-primary)]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
-            <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.8" />
-            <path d="m20 20-3.2-3.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-          </svg>
-          <label className="min-w-0 flex-1">
-            <span className="sr-only">Buscar</span>
-            <input
-              ref={searchRef}
-              value={query}
-              onChange={(event) => update({ q: event.target.value })}
-              placeholder="Producto, marca o código"
-              className="control"
-              aria-label="Buscar"
-            />
-          </label>
-          <button type="button" className="search-close" onClick={closeSearch} aria-label="Cerrar búsqueda">
-            ×
-          </button>
-        </form>
-      ) : null}
-
-      {grouped.length === 0 ? (
-        <p className="panel muted mt-6 px-4 py-8 text-center" role="status">
-          No hay productos con esos filtros.
-        </p>
+        <section ref={sheetRef} className="search-sheet" aria-label="Buscar">
+          <div
+            className="search-handle"
+            onPointerDown={onHandleStart}
+            onPointerMove={onHandleMove}
+            onPointerUp={onHandleEnd}
+            onPointerCancel={onHandleEnd}
+          >
+            <span className="search-grab" aria-hidden="true" />
+          </div>
+          <form className="search-field" onSubmit={(event) => event.preventDefault()}>
+            <svg className="h-5 w-5 shrink-0 text-[var(--color-primary)]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+              <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.8" />
+              <path d="m20 20-3.2-3.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+            </svg>
+            <label className="min-w-0 flex-1">
+              <span className="sr-only">Buscar</span>
+              <input
+                ref={searchRef}
+                value={query}
+                onChange={(event) => update({ q: event.target.value })}
+                placeholder="Producto, marca o código"
+                className="control"
+                aria-label="Buscar"
+              />
+            </label>
+            <button type="button" className="search-close" onClick={closeSearch} aria-label="Cerrar búsqueda">
+              ×
+            </button>
+          </form>
+          <div className="search-body">{productList}</div>
+        </section>
       ) : (
-        <div className="mt-5 space-y-6">
-          {grouped.map((group) => (
-            <section key={group.name} aria-label={group.name}>
-              {section ? null : (
-                <h2 className="kicker">
-                  {group.name}
-                </h2>
-              )}
-              <div className={`grid grid-cols-2 gap-3 ${section ? "" : "mt-3"}`}>
-                {group.products.map((product) => (
-                  <ProductCard key={product.id} product={product} />
-                ))}
-              </div>
-            </section>
-          ))}
-        </div>
+        productList
       )}
     </div>
   );
