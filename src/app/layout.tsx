@@ -5,6 +5,7 @@ import { BottomNav } from "@/components/BottomNav";
 import { CartProvider } from "@/components/CartProvider";
 import { FloatingCart } from "@/components/FloatingCart";
 import { SiteHeader } from "@/components/SiteHeader";
+import { UpdatePrompt } from "@/components/UpdatePrompt";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -51,6 +52,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     >
       <body className="flex min-h-full flex-col text-[var(--color-text)]">
         <CartProvider>
+          <UpdatePrompt />
           <SiteHeader />
           <main className="mx-auto w-full max-w-lg flex-1 pb-48">{children}</main>
           <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30">
