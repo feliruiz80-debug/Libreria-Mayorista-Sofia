@@ -16,7 +16,7 @@ export default async function Home() {
 
   return (
     <div className="px-4 py-5">
-      <p className="kicker">Secciones</p>
+      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-primary)]">Secciones</p>
       <div className="mt-4 grid grid-cols-2 gap-3">
         {catalog.sections.map((section, index) => {
           const count = counts.get(section) ?? 0;
@@ -29,8 +29,8 @@ export default async function Home() {
                 index === 0 ? "col-span-2 min-h-40" : ""
               }`}
             >
-              <span className="kicker">{count} productos</span>
-              <span className={`display text-balance text-[1.85rem] leading-none ${promos ? "text-[var(--color-accent)]" : ""}`}>
+              <span className="muted text-xs font-semibold">{count} productos</span>
+              <span className={`text-xl font-semibold leading-tight tracking-tight ${promos ? "text-[var(--color-accent)]" : ""}`}>
                 {section}
               </span>
             </Link>

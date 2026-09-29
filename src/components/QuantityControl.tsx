@@ -11,7 +11,7 @@ type QuantityControlProps = {
 export function QuantityControl({ quantity, onChange, label, step = 1 }: QuantityControlProps) {
   const jump = step > 0 ? step : 1;
   return (
-    <div className="inline-flex items-center border border-[var(--color-line)] bg-white">
+    <div className="inline-flex items-center overflow-hidden rounded-full border border-[var(--color-line)] bg-white">
       <button
         type="button"
         aria-label={`Quitar ${jump} de ${label}`}
