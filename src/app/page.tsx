@@ -16,8 +16,8 @@ export default async function Home() {
 
   return (
     <div className="px-4 py-5">
-      <p className="text-xs font-semibold uppercase tracking-[0.16em] text-[var(--color-primary)]">Secciones</p>
-      <div className="mt-3 grid grid-cols-2 gap-3">
+      <p className="kicker">Secciones</p>
+      <div className="mt-4 grid grid-cols-2 gap-3">
         {catalog.sections.map((section, index) => {
           const count = counts.get(section) ?? 0;
           const promos = section.toUpperCase() === "PROMOS";
@@ -25,16 +25,12 @@ export default async function Home() {
             <Link
               key={section}
               href={`/catalogo?seccion=${encodeURIComponent(section)}`}
-              className={`glass lift flex min-h-32 flex-col justify-between p-4 ${
+              className={`panel lift flex min-h-32 flex-col justify-between p-5 ${
                 index === 0 ? "col-span-2 min-h-40" : ""
               }`}
             >
-              <span className="muted text-xs font-semibold">{count} productos</span>
-              <span
-                className={`text-xl font-semibold leading-tight tracking-tight ${
-                  promos ? "text-[var(--color-accent)]" : ""
-                }`}
-              >
+              <span className="kicker">{count} productos</span>
+              <span className={`display text-balance text-[1.85rem] leading-none ${promos ? "text-[var(--color-accent)]" : ""}`}>
                 {section}
               </span>
             </Link>

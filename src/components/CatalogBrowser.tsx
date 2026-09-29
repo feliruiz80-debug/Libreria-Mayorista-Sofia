@@ -98,7 +98,7 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
         <Link href="/" className="text-sm font-semibold text-[var(--color-primary)]">
           Volver
         </Link>
-        <h1 className="min-w-0 truncate text-lg font-semibold tracking-tight">{section || "Catálogo"}</h1>
+        <h1 className="display min-w-0 truncate text-3xl leading-none">{section || "Catálogo"}</h1>
       </div>
       <p className="muted mt-1 text-xs">
         {visible.length} productos · {formatDateTime(catalog.fetchedAt)}
@@ -171,7 +171,7 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
       ) : null}
 
       {grouped.length === 0 ? (
-        <p className="glass muted mt-6 px-4 py-8 text-center" role="status">
+        <p className="panel muted mt-6 px-4 py-8 text-center" role="status">
           No hay productos con esos filtros.
         </p>
       ) : (
@@ -179,7 +179,7 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
           {grouped.map((group) => (
             <section key={group.name} aria-label={group.name}>
               {section ? null : (
-                <h2 className="text-sm font-semibold uppercase tracking-wide text-[var(--color-primary)]">
+                <h2 className="kicker">
                   {group.name}
                 </h2>
               )}

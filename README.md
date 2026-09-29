@@ -7,7 +7,7 @@ App para que los clientes vean el catálogo y armen un pedido. Los productos, pr
 - Buscar productos por nombre, marca o código
 - Filtrar por sección y marca
 - Ver precio, presentación, stock y la ficha del sitio
-- Armar un pedido con cantidad (por unidad, bulto o la presentación de la hoja), datos del comercio y enviarlo por WhatsApp. El número se lee de `NEXT_PUBLIC_WHATSAPP_NUMBER` (ver `.env.example`). Se abre el chat con el pedido ya escrito; en WhatsApp solo hay que tocar Enviar. También se puede descargar un PDF checklist para imprimir.
+- Armar un pedido con cantidad (por unidad, bulto o la presentación de la hoja), datos del comercio y enviarlo por WhatsApp al 351 676-8638. Se abre el chat con el pedido ya escrito; en WhatsApp solo hay que tocar Enviar. Para usar otro número, definí `NEXT_PUBLIC_WHATSAPP_NUMBER` (ver `.env.example`). También se puede descargar un PDF checklist para imprimir.
 
 En el celular se puede agregar a la pantalla de inicio: la barra de abajo tiene Inicio, Promos, Buscar y Carrito.
 

@@ -2,15 +2,39 @@ import { formatDateTime, formatMoney, lineTotal, orderTotal } from "@/lib/format
 import { orderCode } from "@/lib/order-code";
 import type { Order } from "@/lib/types";
 
-/** El número sale de NEXT_PUBLIC_WHATSAPP_NUMBER. No queda escrito en el código. */
+/**
+ * WhatsApp de la librería: 351 676-8638.
+ * En Argentina el enlace lleva 54 y el 9 de celular: 5493516768638.
+ * NEXT_PUBLIC_WHATSAPP_NUMBER puede reemplazarlo si hace falta otro número.
+ */
+const WHATSAPP_NUMBER = "5493516768638";
+
+/** Lleva 3516768638, 543516768638 o 5493516768638 al formato que abre wa.me. */
+export function toWhatsAppDigits(raw: string): string {
+  let digits = raw.replace(/\D/g, "");
+  if (digits.startsWith("0")) digits = digits.replace(/^0+/, "");
+  if (!digits) return "";
+  if (digits.startsWith("549")) return digits;
+  if (digits.startsWith("54")) return `549${digits.slice(2)}`;
+  return `549${digits}`;
+}
+
 export function whatsappNumber(): string {
-  return (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER ?? "").replace(/\D/g, "");
+  const fromEnv = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER?.trim() ?? "";
+  return toWhatsAppDigits(fromEnv || WHATSAPP_NUMBER);
 }
 
 export function whatsappLabel(): string {
-  const raw = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER?.trim() ?? "";
-  if (!raw) return "";
-  return raw.startsWith("+") ? raw : `+${whatsappNumber()}`;
+  const digits = whatsappNumber();
+  if (!digits) return "";
+  if (digits.startsWith("549") && digits.length > 6) {
+    const local = digits.slice(3);
+    const area = local.slice(0, 3);
+    const rest = local.slice(3);
+    const pretty = rest.length > 4 ? `${rest.slice(0, rest.length - 4)}-${rest.slice(-4)}` : rest;
+    return `+54 ${area} ${pretty}`.trim();
+  }
+  return `+${digits}`;
 }
 
 function shownMoney(value: number | null): string {

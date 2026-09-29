@@ -11,11 +11,11 @@ type QuantityControlProps = {
 export function QuantityControl({ quantity, onChange, label, step = 1 }: QuantityControlProps) {
   const jump = step > 0 ? step : 1;
   return (
-    <div className="inline-flex items-center rounded-full border border-[color-mix(in_srgb,var(--color-text)_18%,transparent)] bg-[color-mix(in_srgb,var(--color-bg)_80%,white)]">
+    <div className="inline-flex items-center border border-[var(--color-line)] bg-white">
       <button
         type="button"
         aria-label={`Quitar ${jump} de ${label}`}
-        className="grid h-12 w-12 place-items-center rounded-full text-xl text-[var(--color-text)]"
+        className="grid h-12 w-12 place-items-center text-xl text-[var(--color-primary)]"
         onClick={() => onChange(quantity - jump < jump ? 0 : quantity - jump)}
       >
         −
@@ -24,7 +24,7 @@ export function QuantityControl({ quantity, onChange, label, step = 1 }: Quantit
       <button
         type="button"
         aria-label={`Agregar ${jump} de ${label}`}
-        className="grid h-12 w-12 place-items-center rounded-full text-xl text-[var(--color-text)]"
+        className="grid h-12 w-12 place-items-center text-xl text-[var(--color-primary)]"
         onClick={() => onChange(quantity + jump)}
       >
         +
