@@ -23,13 +23,14 @@ export function OrdersView() {
 
   return (
     <div className="px-4 py-4">
-      <h1 className="text-3xl font-semibold tracking-tight">Mis pedidos</h1>
+      <p className="kicker">Archivo</p>
+      <h1 className="display mt-1 text-4xl leading-none">Mis pedidos</h1>
       <p className="muted mt-2 text-sm">
         Quedan guardados en este navegador.
         {label ? ` Enviar abre de nuevo el chat ${label}.` : ""}
       </p>
       {orders.length === 0 ? (
-        <div className="glass mt-6 px-4 py-10 text-center">
+        <div className="panel mt-6 px-4 py-10 text-center">
           <p className="muted">Todavía no confirmaste ningún pedido.</p>
           <Link href="/catalogo" className="btn btn-primary mt-4">
             Ver catálogo
@@ -40,7 +41,7 @@ export function OrdersView() {
           {orders.map((order) => {
             const total = orderTotal(order);
             return (
-              <li key={order.id} className="glass p-5">
+              <li key={order.id} className="panel p-5">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <p className="font-semibold">{orderCode(order)}</p>
                   <p className="muted text-sm">{formatDateTime(order.createdAt)}</p>

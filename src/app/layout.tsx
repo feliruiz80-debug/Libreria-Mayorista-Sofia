@@ -1,6 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import { Suspense } from "react";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Cormorant_Garamond, Geist, Geist_Mono } from "next/font/google";
 import { BottomNav } from "@/components/BottomNav";
 import { CartProvider } from "@/components/CartProvider";
 import { FloatingCart } from "@/components/FloatingCart";
@@ -15,6 +15,12 @@ const geistSans = Geist({
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+const display = Cormorant_Garamond({
+  variable: "--font-display",
+  subsets: ["latin"],
+  weight: ["500", "600", "700"],
 });
 
 export const metadata: Metadata = {
@@ -47,14 +53,14 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
   return (
     <html
       lang="es"
-      className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      className={`${geistSans.variable} ${geistMono.variable} ${display.variable} h-full antialiased`}
     >
       <body className="flex min-h-full flex-col text-[var(--color-text)]">
         <CartProvider>
           <SiteHeader />
           <main className="mx-auto w-full max-w-lg flex-1 pb-48">{children}</main>
-          <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]">
-            <div className="pointer-events-auto mx-auto grid max-w-lg gap-2">
+          <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30">
+            <div className="pointer-events-auto mx-auto grid max-w-lg">
               <FloatingCart />
               <Suspense fallback={null}>
                 <BottomNav />
