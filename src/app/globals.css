@@ -235,15 +235,7 @@ dialog.panel::backdrop {
 
 .search-handle {
   touch-action: none;
-}
-
-.search-grab {
-  display: block;
-  width: 2.25rem;
-  height: 3px;
-  margin: 0.35rem auto 0.45rem;
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--color-primary) 45%, transparent);
+  margin-top: 0.45rem;
 }
 
 .search-field {

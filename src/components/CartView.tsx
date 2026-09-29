@@ -1,9 +1,16 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useMemo, useRef, useState, useSyncExternalStore, type FormEvent } from "react";
 import { QuantityControl } from "@/components/QuantityControl";
 import { useCart } from "@/components/CartProvider";
+import {
+  getCustomerProfileSnapshot,
+  getServerCustomerProfileSnapshot,
+  patchCustomerProfile,
+  saveCustomerProfile,
+  subscribeCustomerProfile,
+} from "@/lib/customer-profile";
 import { formatMoney, lineTotal, orderTotal } from "@/lib/format";
 import { saveOrderImage } from "@/lib/save-order-image";
 import { orderCode } from "@/lib/order-code";
@@ -15,18 +22,19 @@ import type { Order, Product } from "@/lib/types";
 export function CartView({ products }: { products: Product[] }) {
   const { items, setQuantity, remove, clear } = useCart();
   const byId = useMemo(() => new Map(products.map((product) => [product.id, product])), [products]);
-  const [customerName, setCustomerName] = useState("");
-  const [businessName, setBusinessName] = useState("");
-  const [cuit, setCuit] = useState("");
-  const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("");
+  const profile = useSyncExternalStore(
+    subscribeCustomerProfile,
+    getCustomerProfileSnapshot,
+    getServerCustomerProfileSnapshot,
+  );
   const [note, setNote] = useState("");
-  const [delivery, setDelivery] = useState<"retiro" | "envio">("retiro");
   const [error, setError] = useState("");
   const [draft, setDraft] = useState<Order | null>(null);
   const dialogRef = useRef<HTMLDialogElement>(null);
   const number = whatsappNumber();
   const label = whatsappLabel();
+
+  const { customerName, businessName, cuit, phone, address, delivery } = profile;
 
   const lines = items.map((item) => ({ item, product: byId.get(item.productId) }));
   const known = lines.filter((line) => line.product);
@@ -58,12 +66,23 @@ export function CartView({ products }: { products: Product[] }) {
       return null;
     }
     setError("");
+    const formattedCuit = cuitDigits
+      ? `${cuitDigits.slice(0, 2)}-${cuitDigits.slice(2, 10)}-${cuitDigits.slice(10)}`
+      : "";
+    saveCustomerProfile({
+      customerName: customerName.trim(),
+      businessName: businessName.trim(),
+      cuit: formattedCuit,
+      phone: phone.trim(),
+      address: address.trim(),
+      delivery,
+    });
     return {
       id: draft?.id ?? crypto.randomUUID(),
       createdAt: draft?.createdAt ?? new Date().toISOString(),
       customerName: customerName.trim(),
       businessName: businessName.trim(),
-      cuit: cuitDigits ? `${cuitDigits.slice(0, 2)}-${cuitDigits.slice(2, 10)}-${cuitDigits.slice(10)}` : "",
+      cuit: formattedCuit,
       phone: phone.trim(),
       note: note.trim(),
       delivery,
@@ -95,6 +114,14 @@ export function CartView({ products }: { products: Product[] }) {
       setError("Falta configurar NEXT_PUBLIC_WHATSAPP_NUMBER.");
       return;
     }
+    saveCustomerProfile({
+      customerName: draft.customerName,
+      businessName: draft.businessName,
+      cuit: draft.cuit,
+      phone: draft.phone,
+      address: draft.address,
+      delivery: draft.delivery,
+    });
     saveOrder(draft);
     clear();
     dialogRef.current?.close();
@@ -168,34 +195,57 @@ export function CartView({ products }: { products: Product[] }) {
 
       <form onSubmit={review} className="panel grid gap-3 p-4">
         <h2 className="display text-3xl leading-none">Datos del pedido</h2>
-        <Field label="Nombre y apellido" value={customerName} onChange={setCustomerName} autoComplete="name" required />
+        <p className="muted text-sm">Se guardan en este celular para el próximo pedido.</p>
+        <Field
+          label="Nombre y apellido"
+          value={customerName}
+          onChange={(value) => patchCustomerProfile({ customerName: value })}
+          autoComplete="name"
+          required
+        />
         <Field
           label="Razón social / nombre del comercio"
           value={businessName}
-          onChange={setBusinessName}
+          onChange={(value) => patchCustomerProfile({ businessName: value })}
           autoComplete="organization"
           required
         />
         <Field
-          label="CUIT (opcional)"
+          label="CUIT"
           value={cuit}
-          onChange={setCuit}
+          onChange={(value) => patchCustomerProfile({ cuit: value })}
           inputMode="numeric"
+          autoComplete="off"
           placeholder="20-12345678-9"
         />
-        <Field label="Teléfono" value={phone} onChange={setPhone} type="tel" autoComplete="tel" required />
+        <Field
+          label="Teléfono"
+          value={phone}
+          onChange={(value) => patchCustomerProfile({ phone: value })}
+          type="tel"
+          autoComplete="tel"
+          required
+        />
         <Field
           label="Localidad / dirección"
           value={address}
-          onChange={setAddress}
+          onChange={(value) => patchCustomerProfile({ address: value })}
           autoComplete="street-address"
           required
         />
         <fieldset>
           <legend className="text-sm font-semibold">Forma de entrega</legend>
           <div className="mt-2 grid grid-cols-2 gap-2">
-            <Choice selected={delivery === "retiro"} onClick={() => setDelivery("retiro")} label="Retiro en local" />
-            <Choice selected={delivery === "envio"} onClick={() => setDelivery("envio")} label="Envío" />
+            <Choice
+              selected={delivery === "retiro"}
+              onClick={() => patchCustomerProfile({ delivery: "retiro" })}
+              label="Retiro en local"
+            />
+            <Choice
+              selected={delivery === "envio"}
+              onClick={() => patchCustomerProfile({ delivery: "envio" })}
+              label="Envío"
+            />
           </div>
         </fieldset>
         <label className="block text-sm font-semibold">
