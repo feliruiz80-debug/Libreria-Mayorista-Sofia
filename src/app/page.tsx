@@ -30,7 +30,7 @@ export default async function Home() {
               }`}
             >
               <span className="kicker">{count} productos</span>
-              <span className={`display text-[1.85rem] leading-none ${promos ? "text-[var(--color-accent)]" : ""}`}>
+              <span className={`display text-balance text-[1.85rem] leading-none ${promos ? "text-[var(--color-accent)]" : ""}`}>
                 {section}
               </span>
             </Link>

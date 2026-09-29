@@ -44,7 +44,7 @@ export function ProductCard({ product }: { product: Product }) {
         <p className="text-xs font-semibold uppercase tracking-wide text-[var(--color-primary)]">
           {product.code ? `Cód. ${product.code}` : product.brand || "Sin código"}
         </p>
-        <h3 className="display line-clamp-2 text-lg leading-tight">{product.name}</h3>
+        <h3 className="display line-clamp-2 text-balance text-lg leading-tight">{product.name}</h3>
         <p className="text-base font-semibold">{price}</p>
         <p className="muted text-xs">Se vende por {unit.label}</p>
         {product.available ? (
