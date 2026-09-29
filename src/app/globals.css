@@ -55,6 +55,21 @@ body::before {
   color: color-mix(in srgb, var(--color-text) 72%, var(--color-bg));
 }
 
+/* Línea fina del encabezado, sin recuadro. */
+.luxury-line {
+  height: 1px;
+  width: min(100%, 32rem);
+  margin: 0.4rem auto 0;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    color-mix(in srgb, var(--color-primary) 28%, transparent) 16%,
+    var(--color-primary) 50%,
+    color-mix(in srgb, var(--color-primary) 28%, transparent) 84%,
+    transparent 100%
+  );
+}
+
 /* Vidrio reutilizable. Como máximo una capa de backdrop-filter: lo de adentro no vuelve a desenfocar. */
 .glass {
   background: rgba(255, 255, 255, 0.45);

@@ -50,7 +50,7 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
       if (value) params.set(key, value);
       else params.delete(key);
     }
-    params.delete("buscar");
+    if (searchParams.get("buscar") === "1") params.set("buscar", "1");
     const suffix = params.toString();
     router.replace(suffix ? `/catalogo?${suffix}` : "/catalogo", { scroll: false });
   }
@@ -61,6 +61,13 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
       products: visible.filter((product) => product.section === name),
     }))
     .filter((group) => group.products.length > 0);
+
+  function closeSearch() {
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete("buscar");
+    const suffix = params.toString();
+    router.replace(suffix ? `/catalogo?${suffix}` : "/catalogo", { scroll: false });
+  }
 
   return (
     <div className="px-4 py-4">
@@ -74,48 +81,56 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
         {visible.length} productos · {formatDateTime(catalog.fetchedAt)}
       </p>
 
-      <form className="glass mt-4 grid gap-3 p-3" onSubmit={(event) => event.preventDefault()}>
-        <label className="block text-sm font-semibold">
-          Buscar
-          <input
-            ref={searchRef}
-            value={query}
-            onChange={(event) => update({ q: event.target.value })}
-            placeholder="Producto, marca o código"
-            className="control mt-1"
-          />
-        </label>
-        <label className="block text-sm font-semibold">
-          Sección
-          <select
-            value={section}
-            onChange={(event) => update({ seccion: event.target.value })}
-            className="control mt-1"
-          >
-            <option value="">Todas las secciones</option>
-            {catalog.sections.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
-        <label className="block text-sm font-semibold">
-          Marca
-          <select
-            value={brand}
-            onChange={(event) => update({ marca: event.target.value })}
-            className="control mt-1"
-          >
-            <option value="">Todas las marcas</option>
-            {catalog.brands.map((name) => (
-              <option key={name} value={name}>
-                {name}
-              </option>
-            ))}
-          </select>
-        </label>
-      </form>
+      {focusSearch ? (
+        <form
+          className="glass fixed inset-x-3 top-[calc(5.4rem+env(safe-area-inset-top))] z-40 mx-auto grid max-w-lg gap-2 p-3"
+          onSubmit={(event) => event.preventDefault()}
+        >
+          <div className="flex items-center justify-between gap-3">
+            <p className="text-sm font-semibold">Buscar</p>
+            <button type="button" className="btn btn-secondary min-h-10 px-3 text-sm" onClick={closeSearch}>
+              Cerrar
+            </button>
+          </div>
+          <label className="block text-sm font-semibold">
+            <span className="sr-only">Buscar</span>
+            <input
+              ref={searchRef}
+              value={query}
+              onChange={(event) => update({ q: event.target.value })}
+              placeholder="Producto, marca o código"
+              className="control"
+              aria-label="Buscar"
+            />
+          </label>
+          <label className="block text-sm font-semibold">
+            Sección
+            <select
+              value={section}
+              onChange={(event) => update({ seccion: event.target.value })}
+              className="control mt-1"
+            >
+              <option value="">Todas las secciones</option>
+              {catalog.sections.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="block text-sm font-semibold">
+            Marca
+            <select value={brand} onChange={(event) => update({ marca: event.target.value })} className="control mt-1">
+              <option value="">Todas las marcas</option>
+              {catalog.brands.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </label>
+        </form>
+      ) : null}
 
       {grouped.length === 0 ? (
         <p className="glass muted mt-6 px-4 py-8 text-center" role="status">

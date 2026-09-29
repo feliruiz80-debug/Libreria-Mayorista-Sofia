@@ -16,13 +16,22 @@ export function BottomNav() {
   const searchParams = useSearchParams();
   const { count } = useCart();
   const section = searchParams.get("seccion");
-  const searching = searchParams.get("buscar") === "1" || Boolean(searchParams.get("q"));
+  const searching = searchParams.get("buscar") === "1";
+
+  function searchHref() {
+    const params = new URLSearchParams(pathname === "/catalogo" ? searchParams.toString() : "");
+    if (searching && pathname === "/catalogo") params.delete("buscar");
+    else params.set("buscar", "1");
+    const query = params.toString();
+    return query ? `/catalogo?${query}` : "/catalogo";
+  }
 
   function active(id: (typeof items)[number]["id"]) {
     if (id === "home") return pathname === "/";
     if (id === "cart") return pathname === "/carrito";
-    if (id === "promos") return pathname === "/catalogo" && section === "PROMOS";
-    return pathname === "/catalogo" && section !== "PROMOS" && (searching || !section);
+    if (id === "promos") return pathname === "/catalogo" && section === "PROMOS" && !searching;
+    if (id === "search") return searching;
+    return false;
   }
 
   return (
@@ -33,8 +42,9 @@ export function BottomNav() {
           return (
             <Link
               key={item.id}
-              href={item.href}
+              href={item.id === "search" ? searchHref() : item.href}
               aria-current={isActive ? "page" : undefined}
+              aria-expanded={item.id === "search" ? searching : undefined}
               className={`relative flex min-h-16 flex-col items-center justify-center gap-1 px-2 py-2 text-xs font-semibold ${
                 isActive ? "text-[var(--color-primary)]" : "text-[var(--color-text)]"
               }`}

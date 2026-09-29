@@ -3,7 +3,7 @@
 import Link from "next/link";
 import { useSyncExternalStore } from "react";
 import { formatDateTime, formatMoney, orderTotal } from "@/lib/format";
-import { openOrderChecklist } from "@/lib/open-checklist";
+import { saveOrderImage } from "@/lib/save-order-image";
 import { orderCode } from "@/lib/order-code";
 import { openOrderOnWhatsApp, whatsappLabel } from "@/lib/whatsapp";
 import {
@@ -66,8 +66,8 @@ export function OrdersView() {
                   <button type="button" onClick={() => send(order)} className="btn btn-primary">
                     Enviar por WhatsApp
                   </button>
-                  <button type="button" onClick={() => openOrderChecklist(order)} className="btn btn-secondary">
-                    Descargar checklist PDF
+                  <button type="button" onClick={() => saveOrderImage(order)} className="btn btn-secondary">
+                    Guardar PDF
                   </button>
                 </div>
               </li>

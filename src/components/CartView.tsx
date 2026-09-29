@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 import { QuantityControl } from "@/components/QuantityControl";
 import { useCart } from "@/components/CartProvider";
 import { formatMoney, lineTotal, orderTotal } from "@/lib/format";
-import { openOrderChecklist } from "@/lib/open-checklist";
+import { saveOrderImage } from "@/lib/save-order-image";
 import { orderCode } from "@/lib/order-code";
 import { saveOrder } from "@/lib/orders-storage";
 import { quantityLabel, sellingUnit } from "@/lib/selling-unit";
@@ -264,8 +264,8 @@ export function CartView({ products }: { products: Product[] }) {
             <button type="button" className="btn btn-primary w-full" onClick={sendWhatsApp} disabled={!number}>
               Enviar por WhatsApp
             </button>
-            <button type="button" className="btn btn-secondary w-full" onClick={() => openOrderChecklist(draft)}>
-              Descargar checklist PDF
+            <button type="button" className="btn btn-secondary w-full" onClick={() => saveOrderImage(draft)}>
+              Guardar PDF
             </button>
             <button type="button" className="btn btn-secondary w-full" onClick={() => dialogRef.current?.close()}>
               Volver a editar
