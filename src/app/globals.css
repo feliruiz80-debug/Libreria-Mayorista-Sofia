@@ -146,6 +146,17 @@ body::before {
   color: var(--color-primary);
 }
 
+.update-banner {
+  top: calc(env(safe-area-inset-top) + 6rem);
+}
+
+.update-action {
+  min-height: 40px;
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  letter-spacing: 0.03em;
+}
+
 .control {
   width: 100%;
   min-height: 48px;
