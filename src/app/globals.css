@@ -18,6 +18,13 @@
   --background: var(--color-bg);
   --foreground: var(--color-text);
   --radius: 1.75rem;
+  --ease: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@property --dock-x {
+  syntax: "<percentage>";
+  inherits: true;
+  initial-value: 12.5%;
 }
 
 @theme inline {
@@ -103,7 +110,7 @@ h3,
 }
 
 .lift {
-  transition: transform 200ms ease, box-shadow 200ms ease;
+  transition: transform 320ms var(--ease), box-shadow 320ms var(--ease);
 }
 
 .lift:hover {
@@ -127,7 +134,10 @@ h3,
   letter-spacing: -0.01em;
   line-height: 1.2;
   text-align: center;
-  transition: transform 200ms ease, box-shadow 200ms ease, background-color 200ms ease;
+  transition:
+    transform 320ms var(--ease),
+    box-shadow 320ms var(--ease),
+    background-color 320ms var(--ease);
 }
 
 .btn:hover {
@@ -169,6 +179,12 @@ h3,
   color: var(--color-text);
   padding: 0.65rem 0.85rem;
   font-size: 1rem;
+  transition: border-color 240ms var(--ease), box-shadow 240ms var(--ease);
+}
+
+.control:focus {
+  border-color: color-mix(in srgb, var(--color-primary) 48%, white);
+  box-shadow: 0 0 0 4px color-mix(in srgb, var(--color-primary) 12%, transparent);
 }
 
 .control::placeholder {
@@ -190,18 +206,131 @@ dialog.panel {
 }
 
 dialog.panel::backdrop {
-  background: color-mix(in srgb, var(--color-text) 46%, transparent);
+  background: color-mix(in srgb, var(--color-text) 32%, transparent);
+  backdrop-filter: blur(8px);
 }
 
-/* Barra inferior, con el canto de arriba redondo. */
+/* Barra flotante: vidrio suave y el ítem activo levantado en un círculo. */
 .dock {
-  background: var(--color-paper);
-  border: 1px solid var(--color-line);
-  border-bottom: none;
-  border-radius: var(--radius) var(--radius) 0 0;
-  box-shadow: 0 -8px 24px rgba(27, 29, 33, 0.04);
-  padding-bottom: env(safe-area-inset-bottom);
+  position: relative;
+  margin: 0 0.7rem calc(0.4rem + env(safe-area-inset-bottom));
   touch-action: none;
+  transition: --dock-x 520ms var(--ease);
+}
+
+.dock-glass {
+  position: absolute;
+  inset: 0;
+  border-radius: 1.85rem;
+  pointer-events: none;
+  background: color-mix(in srgb, white 72%, transparent);
+  border: 1px solid color-mix(in srgb, white 78%, transparent);
+  box-shadow:
+    0 12px 32px rgba(27, 29, 33, 0.1),
+    inset 0 1px 0 color-mix(in srgb, white 80%, transparent);
+  backdrop-filter: blur(18px) saturate(1.3);
+  mask-image: radial-gradient(circle 2.05rem at var(--dock-x) -0.05rem, transparent 1.9rem, #000 2rem);
+}
+
+.dock-rest .dock-glass {
+  mask-image: none;
+}
+
+.dock-bubble {
+  position: absolute;
+  z-index: 1;
+  top: -1.55rem;
+  left: var(--dock-x);
+  width: 3.35rem;
+  height: 3.35rem;
+  transform: translateX(-50%);
+  border-radius: 999px;
+  pointer-events: none;
+  background: color-mix(in srgb, white 78%, var(--color-primary) 10%);
+  border: 1px solid color-mix(in srgb, white 82%, transparent);
+  box-shadow:
+    0 8px 18px rgba(1, 77, 155, 0.14),
+    inset 0 1px 0 color-mix(in srgb, white 90%, transparent);
+  backdrop-filter: blur(14px) saturate(1.4);
+  transition: opacity 280ms var(--ease);
+}
+
+.dock-rest .dock-bubble {
+  opacity: 0;
+}
+
+.dock-row {
+  position: relative;
+  z-index: 2;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  min-height: 4.35rem;
+}
+
+.dock-link {
+  display: flex;
+  min-width: 0;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.12rem;
+  padding: 0.35rem 0.2rem 0.45rem;
+  color: color-mix(in srgb, var(--color-text) 58%, transparent);
+  font-size: 0.68rem;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  line-height: 1.1;
+  transition: color 320ms var(--ease);
+}
+
+.dock-link[aria-current="page"] {
+  color: var(--color-primary);
+  font-weight: 700;
+}
+
+.dock-ico {
+  position: relative;
+  display: grid;
+  width: 1.55rem;
+  height: 1.55rem;
+  place-items: center;
+  transition: transform 520ms var(--ease);
+}
+
+.dock-link[aria-current="page"] .dock-ico {
+  transform: translateY(-1.85rem);
+}
+
+.dock-tick {
+  width: 1.15rem;
+  height: 2px;
+  border-radius: 999px;
+  background: var(--color-primary);
+  opacity: 0;
+  transform: scaleX(0.35);
+  transition: opacity 280ms var(--ease), transform 420ms var(--ease);
+}
+
+.dock-link[aria-current="page"] .dock-tick {
+  opacity: 1;
+  transform: scaleX(1);
+}
+
+.dock-badge {
+  position: absolute;
+  top: -0.35rem;
+  right: -0.55rem;
+  display: grid;
+  min-width: 1.05rem;
+  min-height: 1.05rem;
+  place-items: center;
+  border-radius: 999px;
+  background: var(--color-primary);
+  padding: 0 0.2rem;
+  color: white;
+  font-size: 0.62rem;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .float-chip {
@@ -209,6 +338,7 @@ dialog.panel::backdrop {
   color: #fff;
   border-radius: 999px;
   box-shadow: 0 10px 24px rgba(1, 77, 155, 0.22);
+  animation: float-in 420ms var(--ease);
 }
 
 /* Sección de búsqueda: sube desde la barra hasta dejar ver el logo. */
@@ -218,7 +348,7 @@ dialog.panel::backdrop {
   left: 0;
   right: 0;
   top: calc(5.35rem + env(safe-area-inset-top));
-  bottom: calc(4.55rem + env(safe-area-inset-bottom));
+  bottom: calc(6.9rem + env(safe-area-inset-bottom));
   margin-inline: auto;
   max-width: 32rem;
   display: flex;
@@ -320,11 +450,53 @@ dialog.panel::backdrop {
   }
 }
 
+@keyframes float-in {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.app-in {
+  animation: app-in 460ms var(--ease);
+}
+
+@keyframes app-in {
+  from {
+    opacity: 0;
+    transform: translateY(12px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.qty button {
+  transition: background-color 180ms var(--ease), transform 180ms var(--ease);
+}
+
+.qty button:active {
+  background: color-mix(in srgb, var(--color-primary) 10%, transparent);
+  transform: scale(0.94);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .btn,
   .lift,
   .search-sheet,
-  .update-banner {
+  .update-banner,
+  .dock,
+  .dock-ico,
+  .dock-tick,
+  .dock-bubble,
+  .app-in,
+  .float-chip,
+  .qty button {
     transition: none;
     animation: none;
   }

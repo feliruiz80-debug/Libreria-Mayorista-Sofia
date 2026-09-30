@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { useEffect, useRef, type PointerEvent as ReactPointerEvent } from "react";
+import { useEffect, useRef, type CSSProperties, type PointerEvent as ReactPointerEvent } from "react";
 import { useCart } from "@/components/CartProvider";
 
 const items = [
@@ -96,13 +96,21 @@ export function BottomNav() {
     return false;
   }
 
+  const activeIndex = items.findIndex((item) => active(item.id));
+  const dockStyle = {
+    "--dock-x": activeIndex < 0 ? "50%" : `${(activeIndex + 0.5) * 25}%`,
+  } as CSSProperties;
+
   return (
     <nav
-      className="dock"
+      className={activeIndex < 0 ? "dock dock-rest" : "dock"}
+      style={dockStyle}
       aria-label="Navegación principal"
       onPointerDown={onPointerDown}
     >
-      <div className="grid grid-cols-4">
+      <span className="dock-bubble" aria-hidden="true" />
+      <div className="dock-glass" aria-hidden="true" />
+      <div className="dock-row">
         {items.map((item) => {
           const isActive = active(item.id);
           return (
@@ -118,17 +126,16 @@ export function BottomNav() {
               }}
               aria-current={isActive ? "page" : undefined}
               aria-expanded={item.id === "search" ? searching : undefined}
-              className={`relative flex min-h-16 flex-col items-center justify-center gap-1 px-2 py-2 text-xs font-semibold ${
-                isActive ? "text-[var(--color-primary)]" : "text-[var(--color-text)]"
-              }`}
+              className="dock-link"
             >
-              <NavIcon id={item.id} />
+              <span className="dock-ico">
+                <NavIcon id={item.id} />
+                {item.id === "cart" && count > 0 ? (
+                  <span className="dock-badge">{count > 9 ? "9+" : count}</span>
+                ) : null}
+              </span>
               {item.label}
-              {item.id === "cart" && count > 0 ? (
-                <span className="absolute right-4 top-1 grid min-h-5 min-w-5 place-items-center rounded-full bg-[var(--color-primary)] px-1 text-[10px] font-bold text-white">
-                  {count > 9 ? "9+" : count}
-                </span>
-              ) : null}
+              <span className="dock-tick" aria-hidden="true" />
             </Link>
           );
         })}
