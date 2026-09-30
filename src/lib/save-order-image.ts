@@ -1,18 +1,59 @@
 "use client";
 
-import { formatDateTime, formatMoney, lineTotal, orderTotal } from "@/lib/format";
+import { COMPANY } from "@/lib/company";
+import { orderTotal } from "@/lib/format";
 import { orderCode } from "@/lib/order-code";
-import { quantityLabel } from "@/lib/selling-unit";
 import type { Order } from "@/lib/types";
 
-const WIDTH = 1080;
-const PAD = 84;
-const CREAM = "#f6f1ea";
-const BLUE = "#014d9b";
-const INK = "#1b1d21";
+const WIDTH = 1240;
+const HEIGHT = 1754;
+const LEFT = 56;
+const RIGHT = WIDTH - 56;
+const BLUE = COMPANY.blue;
+const INK = COMPANY.ink;
+
+const moneyAr = new Intl.NumberFormat("es-AR", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+const qtyAr = new Intl.NumberFormat("es-AR", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+const dateAr = new Intl.DateTimeFormat("es-AR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: "America/Argentina/Buenos_Aires",
+});
 
 function money(value: number | null): string {
-  return value == null ? "A confirmar" : formatMoney(value);
+  return value == null ? "—" : moneyAr.format(value);
+}
+
+function qty(value: number): string {
+  return qtyAr.format(value);
+}
+
+function formatDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return dateAr.format(date);
+}
+
+function validityDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  date.setDate(date.getDate() + 1);
+  return dateAr.format(date);
+}
+
+function presupuestoNumber(order: Pick<Order, "id" | "createdAt">): string {
+  const code = orderCode(order).replace(/\D/g, "");
+  const tail = code.slice(-8).padStart(8, "0");
+  return `0001-${tail}`;
 }
 
 function loadLogo(): Promise<HTMLImageElement | null> {
@@ -24,251 +65,272 @@ function loadLogo(): Promise<HTMLImageElement | null> {
   });
 }
 
-function wrapLines(
-  ctx: CanvasRenderingContext2D,
-  text: string,
-  maxWidth: number,
-  maxLines: number,
-): string[] {
-  const words = text.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
-  if (words.length === 0) return [""];
-  const lines: string[] = [];
-  let current = "";
-  for (const word of words) {
-    const next = current ? `${current} ${word}` : word;
-    if (current && ctx.measureText(next).width > maxWidth) {
-      lines.push(current);
-      current = word;
-      if (lines.length === maxLines) break;
-    } else current = next;
-  }
-  if (current && lines.length < maxLines) lines.push(current);
-  const joined = lines.join(" ");
-  const full = words.join(" ");
-  if (lines.length === maxLines && full.length > joined.length) {
-    let last = lines[maxLines - 1] ?? "";
-    while (last.length > 1 && ctx.measureText(`${last}…`).width > maxWidth) last = last.slice(0, -1);
-    lines[maxLines - 1] = `${last}…`;
-  }
-  return lines;
+function clipText(ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string {
+  const clean = text.replace(/\s+/g, " ").trim();
+  if (ctx.measureText(clean).width <= maxWidth) return clean;
+  let out = clean;
+  while (out.length > 1 && ctx.measureText(`${out}…`).width > maxWidth) out = out.slice(0, -1);
+  return `${out}…`;
 }
 
-function spaced(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, tracking: number) {
-  let cursor = x;
-  for (const char of text) {
-    ctx.fillText(char, cursor, y);
-    cursor += ctx.measureText(char).width + tracking;
-  }
-}
-
-function hairline(ctx: CanvasRenderingContext2D, x1: number, x2: number, y: number) {
-  const gradient = ctx.createLinearGradient(x1, y, x2, y);
-  gradient.addColorStop(0, "rgba(1,77,155,0)");
-  gradient.addColorStop(0.16, "rgba(1,77,155,0.28)");
-  gradient.addColorStop(0.5, BLUE);
-  gradient.addColorStop(0.84, "rgba(1,77,155,0.28)");
-  gradient.addColorStop(1, "rgba(1,77,155,0)");
-  ctx.strokeStyle = gradient;
-  ctx.lineWidth = 1.25;
-  ctx.beginPath();
-  ctx.moveTo(x1, y);
-  ctx.lineTo(x2, y);
-  ctx.stroke();
-}
-
-type Draw = (ctx: CanvasRenderingContext2D) => void;
-
-/** Carta del pedido: crema, logo sin fondo y filete fino. */
+/** Presupuesto A4 al estilo de la librería: cabecera, cliente, tabla y totales. */
 function drawOrderImage(order: Order, logo: HTMLImageElement | null): HTMLCanvasElement {
-  const probe = document.createElement("canvas").getContext("2d");
   const canvas = document.createElement("canvas");
-  if (!probe) return canvas;
+  canvas.width = WIDTH;
+  canvas.height = HEIGHT;
+  const ctx = canvas.getContext("2d");
+  if (!ctx) return canvas;
 
-  const ops: Draw[] = [];
-  let y = 64;
+  ctx.fillStyle = "#ffffff";
+  ctx.fillRect(0, 0, WIDTH, HEIGHT);
 
+  let y = 48;
   if (logo) {
-    const logoHeight = 196;
-    const logoWidth = logoHeight * (logo.naturalWidth / logo.naturalHeight);
-    const left = (WIDTH - logoWidth) / 2;
-    const top = y;
-    ops.push((ctx) => ctx.drawImage(logo, left, top, logoWidth, logoHeight));
-    y += logoHeight + 22;
+    const logoH = 88;
+    const logoW = logoH * (logo.naturalWidth / logo.naturalHeight);
+    ctx.drawImage(logo, LEFT, y, logoW, logoH);
+    ctx.fillStyle = BLUE;
+    ctx.font = "700 28px Arial";
+    ctx.fillText(COMPANY.name, LEFT + logoW + 16, y + 28);
+    ctx.fillStyle = INK;
+    ctx.font = "400 18px Arial";
+    ctx.fillText(`CUIT: ${COMPANY.cuit}`, LEFT + logoW + 16, y + 52);
+    ctx.fillText(`Dirección: ${COMPANY.address}`, LEFT + logoW + 16, y + 74);
+    ctx.fillText(`Teléfonos: ${COMPANY.phones}`, LEFT + logoW + 16, y + 96);
+    ctx.fillText(`Mail: ${COMPANY.email}`, LEFT + logoW + 16, y + 118);
+  } else {
+    ctx.fillStyle = BLUE;
+    ctx.font = "700 28px Arial";
+    ctx.fillText(COMPANY.name, LEFT, y + 28);
   }
 
-  const ruleY = y;
-  ops.push((ctx) => hairline(ctx, WIDTH / 2 - 210, WIDTH / 2 + 210, ruleY));
-  y += 46;
+  const boxSize = 56;
+  const boxX = WIDTH / 2 - boxSize / 2;
+  const boxY = 52;
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 2;
+  ctx.strokeRect(boxX, boxY, boxSize, boxSize);
+  ctx.fillStyle = INK;
+  ctx.font = "700 36px Arial";
+  ctx.textAlign = "center";
+  ctx.fillText("X", boxX + boxSize / 2, boxY + 40);
+  ctx.font = "400 13px Arial";
+  ctx.fillText("Comprobante No Valido como Factura", WIDTH / 2, boxY + boxSize + 22);
+  ctx.textAlign = "left";
 
-  const titleY = y;
-  ops.push((ctx) => {
-    ctx.fillStyle = BLUE;
-    ctx.font = "600 22px Arial";
-    ctx.textAlign = "left";
-    const label = "PEDIDO";
-    const tracking = 9;
-    const width =
-      [...label].reduce((sum, char) => sum + ctx.measureText(char).width, 0) + tracking * (label.length - 1);
-    spaced(ctx, label, (WIDTH - width) / 2, titleY, tracking);
-  });
-  y += 34;
+  ctx.fillStyle = INK;
+  ctx.font = "700 22px Arial";
+  ctx.textAlign = "right";
+  ctx.fillText(presupuestoNumber(order), RIGHT, 70);
+  ctx.fillStyle = BLUE;
+  ctx.font = "700 30px Arial";
+  ctx.fillText("PRESUPUESTO", RIGHT, 108);
+  ctx.textAlign = "left";
 
-  const delivery = order.delivery === "envio" ? "Envío" : "Retiro en local";
-  const meta = `${orderCode(order)}    ·    ${formatDateTime(order.createdAt)}    ·    ${delivery}`;
-  const metaY = y;
-  ops.push((ctx) => {
-    ctx.globalAlpha = 0.82;
-    ctx.fillStyle = INK;
-    ctx.font = "400 22px Arial";
-    ctx.textAlign = "center";
-    ctx.fillText(meta, WIDTH / 2, metaY);
-    ctx.globalAlpha = 1;
-    ctx.textAlign = "left";
-  });
-  y += 52;
+  y = 180;
+  ctx.strokeStyle = INK;
+  ctx.lineWidth = 1.5;
+  ctx.beginPath();
+  ctx.moveTo(LEFT, y);
+  ctx.lineTo(RIGHT, y);
+  ctx.stroke();
 
-  const fields: Array<[string, string]> = [
-    ["Cliente", order.customerName || "—"],
-    ["Comercio", order.businessName || "—"],
-    ["CUIT", order.cuit || "—"],
-    ["Teléfono", order.phone || "—"],
-    ["Dirección", order.address || "—"],
+  y += 16;
+  const boxH = 118;
+  const split = LEFT + (RIGHT - LEFT) * 0.58;
+  ctx.strokeRect(LEFT, y, RIGHT - LEFT, boxH);
+  ctx.beginPath();
+  ctx.moveTo(split, y);
+  ctx.lineTo(split, y + boxH);
+  ctx.stroke();
+
+  const cliente = order.businessName || order.customerName || "—";
+  const domicilio = [order.address, order.customerName && order.businessName ? order.customerName : ""]
+    .filter(Boolean)
+    .join(" · ");
+  ctx.fillStyle = INK;
+  ctx.font = "700 18px Arial";
+  ctx.fillText("Cliente:", LEFT + 14, y + 28);
+  ctx.font = "400 18px Arial";
+  ctx.fillText(clipText(ctx, cliente, split - LEFT - 110), LEFT + 100, y + 28);
+  ctx.font = "700 18px Arial";
+  ctx.fillText("Domicilio:", LEFT + 14, y + 54);
+  ctx.font = "400 18px Arial";
+  ctx.fillText(clipText(ctx, domicilio || "—", split - LEFT - 120), LEFT + 118, y + 54);
+  ctx.font = "700 18px Arial";
+  ctx.fillText("I.V.A.:", LEFT + 14, y + 80);
+  ctx.font = "400 18px Arial";
+  ctx.fillText("—", LEFT + 80, y + 80);
+  ctx.font = "700 18px Arial";
+  ctx.fillText("CUIT:", LEFT + 14, y + 106);
+  ctx.font = "400 18px Arial";
+  ctx.fillText(order.cuit || "—", LEFT + 80, y + 106);
+
+  ctx.font = "700 18px Arial";
+  ctx.fillText("Fecha Presupuesto:", split + 14, y + 28);
+  ctx.font = "400 18px Arial";
+  ctx.fillText(formatDate(order.createdAt), split + 210, y + 28);
+  ctx.font = "700 18px Arial";
+  ctx.fillText("Fecha de Vigencia:", split + 14, y + 54);
+  ctx.font = "400 18px Arial";
+  ctx.fillText(validityDate(order.createdAt), split + 202, y + 54);
+  ctx.font = "700 18px Arial";
+  ctx.fillText("Entrega:", split + 14, y + 80);
+  ctx.font = "400 18px Arial";
+  ctx.fillText(order.delivery === "envio" ? "Envío" : "Retiro", split + 100, y + 80);
+  ctx.font = "700 18px Arial";
+  ctx.fillText("Tel.:", split + 14, y + 106);
+  ctx.font = "400 18px Arial";
+  ctx.fillText(order.phone || "—", split + 70, y + 106);
+
+  y += boxH + 28;
+  const cols = [
+    { label: "Articulo", x: LEFT + 8, w: 150, align: "left" as const },
+    { label: "Cantidad", x: LEFT + 170, w: 110, align: "right" as const },
+    { label: "Descripción", x: LEFT + 300, w: 460, align: "left" as const },
+    { label: "P. U.", x: LEFT + 780, w: 140, align: "right" as const },
+    { label: "Total", x: LEFT + 940, w: 150, align: "right" as const },
   ];
-  for (const [label, value] of fields) {
-    probe.font = "400 28px Arial";
-    const lines = wrapLines(probe, value, WIDTH - PAD * 2, 2);
-    const labelY = y;
-    const valueLines = lines;
-    ops.push((ctx) => {
-      ctx.fillStyle = BLUE;
-      ctx.font = "600 15px Arial";
-      spaced(ctx, label.toUpperCase(), PAD, labelY, 2.4);
-      ctx.fillStyle = INK;
-      ctx.font = "400 28px Arial";
-      valueLines.forEach((line, index) => ctx.fillText(line, PAD, labelY + 32 + index * 34));
-    });
-    y += 36 + lines.length * 34 + 8;
+  ctx.beginPath();
+  ctx.moveTo(LEFT, y);
+  ctx.lineTo(RIGHT, y);
+  ctx.stroke();
+  y += 24;
+  ctx.font = "700 18px Arial";
+  for (const col of cols) {
+    if (col.align === "right") {
+      ctx.textAlign = "right";
+      ctx.fillText(col.label, col.x + col.w, y);
+    } else {
+      ctx.textAlign = "left";
+      ctx.fillText(col.label, col.x, y);
+    }
+  }
+  ctx.textAlign = "left";
+  y += 10;
+  ctx.beginPath();
+  ctx.moveTo(LEFT, y);
+  ctx.lineTo(RIGHT, y);
+  ctx.stroke();
+  y += 28;
+
+  const maxRows = Math.min(order.items.length, 18);
+  for (let index = 0; index < maxRows; index += 1) {
+    const item = order.items[index];
+    const line = item.unitPrice == null ? null : item.unitPrice * item.quantity;
+    const description = [item.name, item.presentation].filter(Boolean).join(" · ");
+    ctx.fillStyle = INK;
+    ctx.font = "400 17px Arial";
+    ctx.textAlign = "left";
+    ctx.fillText(clipText(ctx, item.code || "—", cols[0].w), cols[0].x, y);
+    ctx.textAlign = "right";
+    ctx.fillText(qty(item.quantity), cols[1].x + cols[1].w, y);
+    ctx.textAlign = "left";
+    ctx.fillText(clipText(ctx, description, cols[2].w), cols[2].x, y);
+    ctx.textAlign = "right";
+    ctx.fillText(money(item.unitPrice), cols[3].x + cols[3].w, y);
+    ctx.fillText(money(line), cols[4].x + cols[4].w, y);
+    ctx.textAlign = "left";
+    y += 28;
+  }
+  if (order.items.length > maxRows) {
+    ctx.fillStyle = INK;
+    ctx.font = "400 16px Arial";
+    ctx.fillText(`… y ${order.items.length - maxRows} ítems más`, LEFT + 8, y);
+    y += 28;
   }
 
   y += 8;
-  const detailRule = y;
-  ops.push((ctx) => hairline(ctx, PAD, WIDTH - PAD, detailRule));
-  y += 36;
-  const detailY = y;
-  ops.push((ctx) => {
-    ctx.fillStyle = BLUE;
-    ctx.font = "600 15px Arial";
-    spaced(ctx, "DETALLE", PAD, detailY, 2.4);
-  });
+  ctx.strokeStyle = INK;
+  ctx.beginPath();
+  ctx.moveTo(LEFT, y);
+  ctx.lineTo(RIGHT, y);
+  ctx.stroke();
+  y += 30;
+
+  const subtotal = orderTotal(order);
+  const totalsX = LEFT + 700;
+  ctx.font = "700 18px Arial";
+  ctx.fillText("Observaciones", LEFT + 8, y);
+  ctx.font = "400 17px Arial";
+  ctx.fillText(clipText(ctx, order.note.trim() || "—", 520), LEFT + 8, y + 28);
+
+  ctx.font = "400 18px Arial";
+  ctx.fillText("SubTotal", totalsX, y);
+  ctx.textAlign = "right";
+  ctx.fillText(money(subtotal), RIGHT, y);
+  ctx.textAlign = "left";
+  ctx.fillText("SubTotal Impuestos", totalsX, y + 28);
+  ctx.textAlign = "right";
+  ctx.fillText(money(0), RIGHT, y + 28);
+  ctx.textAlign = "left";
+  ctx.fillText("Desc/Rec", totalsX, y + 56);
+  ctx.textAlign = "right";
+  ctx.fillText(money(0), RIGHT, y + 56);
+  ctx.textAlign = "left";
+  ctx.beginPath();
+  ctx.moveTo(totalsX, y + 70);
+  ctx.lineTo(RIGHT, y + 70);
+  ctx.stroke();
+  ctx.font = "700 20px Arial";
+  ctx.fillText("Sub Total $", totalsX, y + 96);
+  ctx.textAlign = "right";
+  ctx.fillText(money(subtotal), RIGHT, y + 96);
+  ctx.textAlign = "left";
+
+  y += 130;
+  ctx.beginPath();
+  ctx.moveTo(LEFT, y);
+  ctx.lineTo(RIGHT, y);
+  ctx.stroke();
   y += 28;
-
-  order.items.forEach((item, index) => {
-    probe.font = "400 26px Arial";
-    const nameLines = wrapLines(probe, item.name, WIDTH - PAD * 2 - 48, 2);
-    const top = y;
-    const subtotal = lineTotal(item.unitPrice, item.quantity);
-    const qty = quantityLabel(item.presentation, item.quantity);
-    ops.push((ctx) => {
-      ctx.strokeStyle = BLUE;
-      ctx.lineWidth = 1.6;
-      ctx.strokeRect(PAD, top, 20, 20);
-      ctx.fillStyle = BLUE;
-      ctx.font = "600 18px Arial";
-      ctx.fillText(`${index + 1}   ${item.code || "Sin código"}`, PAD + 36, top + 16);
-      ctx.fillStyle = INK;
-      ctx.font = "400 26px Arial";
-      nameLines.forEach((line, lineIndex) => ctx.fillText(line, PAD + 36, top + 50 + lineIndex * 32));
-      const foot = top + 50 + nameLines.length * 32;
-      ctx.globalAlpha = 0.72;
-      ctx.font = "400 20px Arial";
-      ctx.fillText(`${qty}   ·   ${money(item.unitPrice)}`, PAD + 36, foot);
-      ctx.globalAlpha = 1;
-      ctx.font = "600 24px Arial";
-      ctx.textAlign = "right";
-      ctx.fillText(money(subtotal), WIDTH - PAD, foot);
-      ctx.textAlign = "left";
-      ctx.globalAlpha = 0.22;
-      ctx.strokeStyle = BLUE;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(PAD, foot + 18);
-      ctx.lineTo(WIDTH - PAD, foot + 18);
-      ctx.stroke();
-      ctx.globalAlpha = 1;
-    });
-    y += 78 + nameLines.length * 32;
-  });
-
-  y += 16;
-  const units = order.items.reduce((sum, item) => sum + item.quantity, 0);
-  const total = orderTotal(order);
-  const totalRule = y;
-  const unitsY = y + 36;
-  const totalY = y + 78;
-  ops.push((ctx) => {
-    hairline(ctx, PAD, WIDTH - PAD, totalRule);
-    ctx.globalAlpha = 0.75;
+  for (let index = 1; index <= 5; index += 1) {
+    ctx.font = "400 16px Arial";
     ctx.fillStyle = INK;
-    ctx.font = "400 22px Arial";
-    ctx.fillText("Unidades", PAD, unitsY);
-    ctx.textAlign = "right";
-    ctx.fillText(String(units), WIDTH - PAD, unitsY);
-    ctx.textAlign = "left";
-    ctx.globalAlpha = 1;
-    ctx.fillStyle = BLUE;
-    ctx.font = "600 18px Arial";
-    spaced(ctx, "TOTAL", PAD, totalY, 3);
-    ctx.font = "600 34px Arial";
-    ctx.textAlign = "right";
-    ctx.fillText(money(total), WIDTH - PAD, totalY + 4);
-    ctx.textAlign = "left";
-  });
-  y += 118;
+    ctx.fillText(`Detalle de la Forma de Pago ${index}`, LEFT + 8, y);
+    ctx.fillText("Financiación", LEFT + 420, y);
+    ctx.fillText("Imp.", LEFT + 760, y);
+    ctx.fillText("Total", LEFT + 920, y);
+    y += 10;
+    ctx.beginPath();
+    ctx.moveTo(LEFT, y);
+    ctx.lineTo(RIGHT, y);
+    ctx.stroke();
+    y += 24;
+  }
 
-  const note = order.note.trim() || "Sin observaciones";
-  probe.font = "400 22px Arial";
-  const noteLines = wrapLines(probe, note, WIDTH - PAD * 2, 3);
-  const noteTop = y;
-  ops.push((ctx) => {
-    ctx.globalAlpha = 0.8;
-    ctx.fillStyle = INK;
-    ctx.font = "400 22px Arial";
-    noteLines.forEach((line, index) => ctx.fillText(line, PAD, noteTop + index * 30));
-    ctx.globalAlpha = 0.65;
-    ctx.font = "400 20px Arial";
-    ctx.fillText("Precios y stock sujetos a confirmación.", PAD, noteTop + noteLines.length * 30 + 16);
-    ctx.globalAlpha = 1;
-  });
-  y += noteLines.length * 30 + 64;
+  y = HEIGHT - 70;
+  ctx.beginPath();
+  ctx.moveTo(LEFT, y - 20);
+  ctx.lineTo(RIGHT, y - 20);
+  ctx.stroke();
+  ctx.fillStyle = BLUE;
+  ctx.font = "400 16px Arial";
+  ctx.fillText(`Visítanos en redes: ${COMPANY.instagram}`, LEFT, y);
+  ctx.textAlign = "center";
+  ctx.fillText(`Contáctanos ${COMPANY.contactPhone}`, WIDTH / 2, y);
+  ctx.textAlign = "right";
+  ctx.fillText(`visita nuestra web ${COMPANY.web}`, RIGHT, y);
+  ctx.textAlign = "left";
+  ctx.fillStyle = INK;
+  ctx.font = "400 14px Arial";
+  ctx.fillText("Precios y stock sujetos a confirmación.", LEFT, y + 26);
 
-  const height = y;
-  canvas.width = WIDTH;
-  canvas.height = height;
-  const ctx = canvas.getContext("2d");
-  if (!ctx) return canvas;
-  ctx.fillStyle = CREAM;
-  ctx.fillRect(0, 0, WIDTH, height);
-  ctx.strokeStyle = BLUE;
-  ctx.globalAlpha = 0.28;
-  ctx.lineWidth = 1;
-  ctx.strokeRect(32, 32, WIDTH - 64, height - 64);
-  ctx.globalAlpha = 1;
-  for (const op of ops) op(ctx);
   return canvas;
 }
 
-/** Botón Guardar PDF: baja una imagen del pedido para la galería del teléfono. */
+/** Botón Guardar PDF: baja una imagen del presupuesto para la galería del teléfono. */
 export async function saveOrderImage(order: Order) {
   const logo = await loadLogo();
   const canvas = drawOrderImage(order, logo);
   const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.92));
   if (!blob) return;
 
-  const file = new File([blob], `pedido-${orderCode(order)}.jpg`, { type: "image/jpeg" });
+  const file = new File([blob], `presupuesto-${orderCode(order)}.jpg`, { type: "image/jpeg" });
   const mobile = window.matchMedia("(pointer: coarse)").matches;
   if (mobile && typeof navigator.share === "function" && navigator.canShare?.({ files: [file] })) {
     try {
-      await navigator.share({ files: [file], title: `Pedido ${orderCode(order)}` });
+      await navigator.share({ files: [file], title: `Presupuesto ${orderCode(order)}` });
       return;
     } catch (error) {
       if (error instanceof DOMException && error.name === "AbortError") return;

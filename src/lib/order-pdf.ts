@@ -1,5 +1,6 @@
 import type { Order } from "@/lib/types";
-import { formatDateTime, formatMoney, formatShipDate, orderTotal } from "@/lib/format";
+import { COMPANY } from "@/lib/company";
+import { orderTotal } from "@/lib/format";
 import { logoMarkPdf } from "@/lib/logo-pdf-data";
 import { orderCode } from "@/lib/order-code";
 
@@ -26,6 +27,23 @@ const WIN_ANSI: Record<string, string> = {
   "\u202f": " ",
 };
 
+const moneyAr = new Intl.NumberFormat("es-AR", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+const qtyAr = new Intl.NumberFormat("es-AR", {
+  minimumFractionDigits: 2,
+  maximumFractionDigits: 2,
+});
+
+const dateAr = new Intl.DateTimeFormat("es-AR", {
+  day: "2-digit",
+  month: "2-digit",
+  year: "numeric",
+  timeZone: "America/Argentina/Buenos_Aires",
+});
+
 function pdfText(value: string): string {
   let out = "";
   for (const char of value) {
@@ -41,32 +59,19 @@ function n(value: number): string {
   return (Math.round(value * 100) / 100).toString();
 }
 
-function money(value: number): string {
-  return formatMoney(value).replace(/\u00a0|\u202f/g, " ");
+function money(value: number | null): string {
+  if (value == null) return "A confirmar";
+  return moneyAr.format(value);
+}
+
+function qty(value: number): string {
+  return qtyAr.format(value);
 }
 
 function clip(value: string, max: number): string {
   const clean = value.replace(/\s+/g, " ").trim();
   if (clean.length <= max) return clean;
   return `${clean.slice(0, Math.max(0, max - 3))}...`;
-}
-
-function wrap(value: string, max: number): string[] {
-  const words = value.replace(/\s+/g, " ").trim().split(" ").filter(Boolean);
-  if (words.length === 0) return [];
-  const lines: string[] = [];
-  let current = "";
-  for (const word of words) {
-    const next = current ? `${current} ${word}` : word;
-    if (current && next.length > max) {
-      lines.push(current);
-      current = word;
-    } else {
-      current = next;
-    }
-  }
-  if (current) lines.push(current);
-  return lines;
 }
 
 function textWidth(value: string, size: number): number {
@@ -79,6 +84,26 @@ function textWidth(value: string, size: number): number {
     else units += 520;
   }
   return (units / 1000) * size;
+}
+
+function formatDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  return dateAr.format(date);
+}
+
+function validityDate(iso: string): string {
+  const date = new Date(iso);
+  if (Number.isNaN(date.getTime())) return "—";
+  date.setDate(date.getDate() + 1);
+  return dateAr.format(date);
+}
+
+/** Número tipo presupuesto a partir del código del pedido. */
+function presupuestoNumber(order: Pick<Order, "id" | "createdAt">): string {
+  const code = orderCode(order).replace(/\D/g, "");
+  const tail = code.slice(-8).padStart(8, "0");
+  return `0001-${tail}`;
 }
 
 class Sheet {
@@ -102,8 +127,12 @@ class Sheet {
     this.ops.push(`${n(x)} ${n(y)} ${n(w)} ${n(h)} re f`);
   }
 
-  box(x: number, y: number, w: number, h: number) {
-    this.ops.push("0.8 w", `${n(x)} ${n(y)} ${n(w)} ${n(h)} re S`);
+  box(x: number, y: number, w: number, h: number, width = 0.7) {
+    this.ops.push(`${n(width)} w`, `${n(x)} ${n(y)} ${n(w)} ${n(h)} re S`);
+  }
+
+  line(x1: number, y1: number, x2: number, y2: number, width = 0.6) {
+    this.ops.push(`${n(width)} w`, `${n(x1)} ${n(y1)} m ${n(x2)} ${n(y2)} l S`);
   }
 
   text(
@@ -112,26 +141,14 @@ class Sheet {
     x: number,
     y: number,
     value: string,
-    align: "left" | "right" = "left",
+    align: "left" | "right" | "center" = "left",
     width = 0,
-    tracking = 0,
   ) {
     const shown = pdfText(value);
-    const extra = tracking * Math.max(0, [...value].length - 1);
-    const left = align === "right" ? x + width - textWidth(value, size) - extra : x;
-    this.ops.push(
-      "BT",
-      `/${font} ${n(size)} Tf`,
-      `${n(tracking)} Tc`,
-      `${n(left)} ${n(y)} Td`,
-      `(${shown}) Tj`,
-      "0 Tc",
-      "ET",
-    );
-  }
-
-  rule(x1: number, x2: number, y: number) {
-    this.ops.push("0.45 w", `${n(x1)} ${n(y)} m ${n(x2)} ${n(y)} l S`);
+    let left = x;
+    if (align === "right") left = x + width - textWidth(value, size);
+    if (align === "center") left = x + (width - textWidth(value, size)) / 2;
+    this.ops.push("BT", `/${font} ${n(size)} Tf`, `${n(left)} ${n(y)} Td`, `(${shown}) Tj`, "ET");
   }
 
   raw(value: string) {
@@ -153,164 +170,205 @@ function decode64(value: string): Uint8Array {
 const logoRgb = decode64(logoMarkPdf.rgb);
 const logoAlpha = decode64(logoMarkPdf.alpha);
 
-/** Cabecera en crema: el logo entra sin placa de color detrás. */
+const LEFT = 36;
+const RIGHT = 559;
+const WIDTH = RIGHT - LEFT;
+
 function drawHeader(page: Sheet, order: Order): number {
-  page.fill("#f6f1ea");
+  page.fill("#ffffff");
   page.rect(0, 0, 595, 842);
-  const logoW = 78;
+
+  const logoW = 42;
   const logoH = (logoW * logoMarkPdf.height) / logoMarkPdf.width;
-  const x = (595 - logoW) / 2;
-  const y = 842 - 28 - logoH;
-  page.raw(`q\n${n(logoW)} 0 0 ${n(logoH)} ${n(x)} ${n(y)} cm\n/Im1 Do\nQ`);
-  const lineY = y - 12;
-  page.stroke("#014d9b");
-  page.rule(214, 381, lineY);
-  page.fill("#014d9b");
-  const title = "PEDIDO";
-  const titleSize = 10;
-  const tracking = 1.8;
-  const titleW = textWidth(title, titleSize) + tracking * (title.length - 1);
-  page.text("F2", titleSize, (595 - titleW) / 2, lineY - 16, title, "left", 0, tracking);
-  const delivery = order.delivery === "envio" ? "Envío" : "Retiro en local";
-  const meta = `${orderCode(order)}  ·  ${formatDateTime(order.createdAt)}  ·  ${delivery}`;
-  page.fill("#1b1d21");
-  const metaW = textWidth(meta, 8);
-  page.text("F1", 8, (595 - metaW) / 2, lineY - 30, clip(meta, 92));
-  return lineY - 48;
+  const logoX = LEFT;
+  const logoY = 842 - 28 - logoH;
+  page.raw(`q\n${n(logoW)} 0 0 ${n(logoH)} ${n(logoX)} ${n(logoY)} cm\n/Im1 Do\nQ`);
+
+  page.fill(COMPANY.blue);
+  page.text("F2", 12, LEFT + logoW + 8, 842 - 36, COMPANY.name);
+  page.fill(COMPANY.ink);
+  page.text("F1", 8, LEFT + logoW + 8, 842 - 50, `CUIT: ${COMPANY.cuit}`);
+  page.text("F1", 8, LEFT + logoW + 8, 842 - 61, `Dirección: ${COMPANY.address}`);
+  page.text("F1", 8, LEFT + logoW + 8, 842 - 72, `Teléfonos: ${COMPANY.phones}`);
+  page.text("F1", 8, LEFT + logoW + 8, 842 - 83, `Mail: ${COMPANY.email}`);
+
+  const boxSize = 28;
+  const boxX = 286;
+  const boxY = 842 - 34 - boxSize;
+  page.stroke(COMPANY.ink);
+  page.box(boxX, boxY, boxSize, boxSize, 1);
+  page.fill(COMPANY.ink);
+  page.text("F2", 18, boxX, boxY + 7, "X", "center", boxSize);
+  page.text("F1", 6.5, 248, boxY - 12, "Comprobante No Valido como Factura", "center", 104);
+
+  page.fill(COMPANY.ink);
+  page.text("F2", 10, RIGHT - 130, 842 - 36, presupuestoNumber(order), "right", 130);
+  page.fill(COMPANY.blue);
+  page.text("F2", 14, RIGHT - 130, 842 - 56, "PRESUPUESTO", "right", 130);
+
+  page.stroke(COMPANY.ink);
+  page.line(LEFT, 842 - 100, RIGHT, 842 - 100, 0.8);
+  return 842 - 108;
 }
 
-function infoBlock(page: Sheet, x: number, top: number, title: string, lines: string[]) {
-  page.fill("#014d9b");
-  page.text("F2", 8, x, top, title, "left", 0, 0.8);
-  page.stroke("#014d9b");
-  page.rule(x, x + 230, top - 6);
-  page.fill("#1b1d21");
-  lines.slice(0, 4).forEach((line, index) => {
-    page.text("F1", 10, x, top - 24 - index * 14, clip(line, 40));
-  });
+function drawClientBox(page: Sheet, order: Order, top: number): number {
+  const height = 58;
+  const bottom = top - height;
+  page.stroke(COMPANY.ink);
+  page.box(LEFT, bottom, WIDTH, height, 0.7);
+  page.line(LEFT + WIDTH * 0.58, bottom, LEFT + WIDTH * 0.58, top, 0.5);
+
+  const leftX = LEFT + 8;
+  const rightX = LEFT + WIDTH * 0.58 + 8;
+  const cliente = order.businessName || order.customerName || "—";
+  const domicilio = [order.address, order.customerName && order.businessName ? order.customerName : ""]
+    .filter(Boolean)
+    .join(" · ");
+
+  page.fill(COMPANY.ink);
+  page.text("F2", 8, leftX, top - 14, "Cliente:");
+  page.text("F1", 8, leftX + 42, top - 14, clip(cliente, 38));
+  page.text("F2", 8, leftX, top - 28, "Domicilio:");
+  page.text("F1", 8, leftX + 50, top - 28, clip(domicilio || "—", 36));
+  page.text("F2", 8, leftX, top - 42, "I.V.A.:");
+  page.text("F1", 8, leftX + 34, top - 42, "—");
+  if (order.cuit) {
+    page.text("F2", 8, leftX, top - 54, "CUIT:");
+    page.text("F1", 8, leftX + 32, top - 54, order.cuit);
+  }
+
+  page.text("F2", 8, rightX, top - 14, "Fecha Presupuesto:");
+  page.text("F1", 8, rightX + 96, top - 14, formatDate(order.createdAt));
+  page.text("F2", 8, rightX, top - 28, "Fecha de Vigencia:");
+  page.text("F1", 8, rightX + 92, top - 28, validityDate(order.createdAt));
+  page.text("F2", 8, rightX, top - 42, "Entrega:");
+  page.text("F1", 8, rightX + 42, top - 42, order.delivery === "envio" ? "Envío" : "Retiro");
+  page.text("F2", 8, rightX, top - 54, "Tel.:");
+  page.text("F1", 8, rightX + 24, top - 54, clip(order.phone || "—", 22));
+
+  return bottom - 14;
+}
+
+function drawTableHeader(page: Sheet, y: number): number {
+  const columns = [
+    { label: "Articulo", x: LEFT + 4, w: 72, align: "left" as const },
+    { label: "Cantidad", x: LEFT + 78, w: 54, align: "right" as const },
+    { label: "Descripción", x: LEFT + 140, w: 220, align: "left" as const },
+    { label: "P. U.", x: LEFT + 368, w: 70, align: "right" as const },
+    { label: "Total", x: LEFT + 444, w: 72, align: "right" as const },
+  ];
+  page.stroke(COMPANY.ink);
+  page.line(LEFT, y + 12, RIGHT, y + 12, 0.7);
+  page.fill(COMPANY.ink);
+  for (const column of columns) {
+    page.text("F2", 8, column.x, y, column.label, column.align, column.w);
+  }
+  page.line(LEFT, y - 6, RIGHT, y - 6, 0.7);
+  return y - 20;
+}
+
+function drawFooter(page: Sheet) {
+  const y = 42;
+  page.stroke(COMPANY.ink);
+  page.line(LEFT, y + 28, RIGHT, y + 28, 0.5);
+  page.fill(COMPANY.blue);
+  page.text("F1", 7.5, LEFT, y + 12, `Visítanos en redes: ${COMPANY.instagram}`);
+  page.text("F1", 7.5, LEFT + 175, y + 12, `Contáctanos ${COMPANY.contactPhone}`, "center", 170);
+  page.text("F1", 7.5, RIGHT - 170, y + 12, `visita nuestra web ${COMPANY.web}`, "right", 170);
+  page.fill(COMPANY.ink);
+  page.text("F1", 7, LEFT, y - 2, "Precios y stock sujetos a confirmación.");
 }
 
 export function buildOrderPdf(order: Order): Uint8Array {
   const subtotal = orderTotal(order);
-  const payable =
-    subtotal == null
-      ? null
-      : subtotal + (order.delivery === "envio" && order.shippingCost != null ? order.shippingCost : 0);
-  const shipping =
-    order.delivery === "envio"
-      ? order.shippingCost == null
-        ? "A coordinar"
-        : money(order.shippingCost)
-      : money(0);
   const pages: Sheet[] = [];
   let page = new Sheet();
   pages.push(page);
-  const contentTop = drawHeader(page, order);
 
-  const clientLines = [
-    order.customerName || "Cliente",
-    order.businessName || "Sin comercio",
-    order.cuit ? `CUIT ${order.cuit}` : "Sin CUIT",
-    order.phone ? `Tel. ${order.phone}` : "Sin telefono",
-  ];
-  const addressLines = wrap(order.address || "Sin dirección", 38).slice(0, 1);
-  const estimate = order.estimatedShipDate
-    ? `Estimada: ${formatShipDate(order.estimatedShipDate)}`
-    : "Fecha estimada: a coordinar";
-  const shippingLines =
-    order.delivery === "envio"
-      ? ["Envío a domicilio", ...addressLines, `Costo: ${shipping}`, estimate]
-      : ["Retiro en el local", "Sin costo de envío", estimate];
-  infoBlock(page, 36, contentTop, "CLIENTE", clientLines);
-  infoBlock(page, 318, contentTop, "ENTREGA", shippingLines);
+  let y = drawHeader(page, order);
+  y = drawClientBox(page, order, y);
+  y = drawTableHeader(page, y);
 
-  const columns = [
-    { label: "Código", x: 54, w: 72 },
-    { label: "Producto", x: 128, w: 196 },
-    { label: "Cant.", x: 326, w: 48 },
-    { label: "P. unit.", x: 376, w: 76 },
-    { label: "Importe", x: 454, w: 94 },
-  ];
-  let y = contentTop - 96;
-
-  const header = () => {
-    page.stroke("#014d9b");
-    page.rule(36, 559, y + 14);
-    page.fill("#014d9b");
-    for (const column of columns) {
-      page.text("F2", 8, column.x, y, column.label, "left", 0, 0.4);
-    }
-    page.stroke("#014d9b");
-    page.rule(36, 559, y - 6);
-    y -= 24;
+  const col = {
+    code: LEFT + 4,
+    qty: LEFT + 78,
+    name: LEFT + 140,
+    unit: LEFT + 368,
+    total: LEFT + 444,
   };
-  header();
 
   order.items.forEach((item) => {
-    if (y < 120) {
+    if (y < 160) {
+      drawFooter(page);
       page = new Sheet();
       pages.push(page);
-      y = drawHeader(page, order) - 8;
-      header();
+      y = drawHeader(page, order);
+      y = drawTableHeader(page, y - 8);
     }
     const line = item.unitPrice == null ? null : item.unitPrice * item.quantity;
-    page.stroke("#014d9b");
-    page.box(36, y - 3, 10, 10);
-    page.fill("#1b1d21");
-    page.text("F1", 8, columns[0].x, y, clip(item.code || "-", 12));
-    page.text("F2", 9, columns[1].x, y + 2, clip(item.name, 38));
-    page.fill("#014d9b");
-    page.text(
-      "F1",
-      8,
-      columns[1].x,
-      y - 11,
-      clip([item.presentation].filter(Boolean).join(" · ") || " ", 40),
-    );
-    page.fill("#1b1d21");
-    page.text("F1", 9, columns[2].x, y, String(item.quantity), "right", columns[2].w);
-    page.text(
-      "F1",
-      9,
-      columns[3].x,
-      y,
-      item.unitPrice == null ? "A confirmar" : money(item.unitPrice),
-      "right",
-      columns[3].w,
-    );
-    page.text("F2", 9, columns[4].x, y, line == null ? "A confirmar" : money(line), "right", columns[4].w);
-    page.stroke("#014d9b");
-    page.rule(36, 559, y - 16);
-    y -= 32;
+    const description = [item.name, item.presentation].filter(Boolean).join(" · ");
+    page.fill(COMPANY.ink);
+    page.text("F1", 8, col.code, y, clip(item.code || "—", 12));
+    page.text("F1", 8, col.qty, y, qty(item.quantity), "right", 54);
+    page.text("F1", 8, col.name, y, clip(description, 42));
+    page.text("F1", 8, col.unit, y, item.unitPrice == null ? "—" : money(item.unitPrice), "right", 70);
+    page.text("F1", 8, col.total, y, line == null ? "—" : money(line), "right", 72);
+    y -= 14;
   });
 
   y -= 8;
-  if (y < 120) {
+  if (y < 180) {
+    drawFooter(page);
     page = new Sheet();
     pages.push(page);
-    y = drawHeader(page, order) - 8;
+    y = drawHeader(page, order) - 20;
   }
-  const units = order.items.reduce((sum, item) => sum + item.quantity, 0);
-  page.stroke("#014d9b");
-  page.rule(330, 559, y + 10);
-  page.fill("#1b1d21");
-  page.text("F1", 9, 344, y - 8, "Unidades");
-  page.text("F1", 9, 344, y - 24, "Subtotal");
-  page.text("F1", 9, 344, y - 40, "Envío");
-  page.text("F1", 9, 430, y - 8, String(units), "right", 118);
-  page.text("F1", 9, 430, y - 24, subtotal == null ? "A confirmar" : money(subtotal), "right", 118);
-  page.text("F1", 9, 430, y - 40, shipping, "right", 118);
-  page.stroke("#014d9b");
-  page.rule(330, 559, y - 50);
-  page.fill("#014d9b");
-  page.text("F2", 11, 344, y - 68, "TOTAL", "left", 0, 1.1);
-  page.text("F2", 11, 430, y - 68, payable == null ? "A confirmar" : money(payable), "right", 118);
 
-  page.fill("#1b1d21");
-  const note = order.note.trim() ? `Obs.: ${order.note.trim()}` : "Sin observaciones";
-  page.text("F1", 9, 32, 56, clip(note, 88));
-  page.text("F1", 8, 32, 36, "Precios y stock sujetos a confirmación.");
+  page.stroke(COMPANY.ink);
+  page.line(LEFT, y + 10, RIGHT, y + 10, 0.7);
 
+  const totalsX = LEFT + 330;
+  page.fill(COMPANY.ink);
+  page.text("F2", 8, LEFT + 4, y - 6, "Observaciones");
+  const note = order.note.trim() || "—";
+  page.text("F1", 8, LEFT + 4, y - 20, clip(note, 48));
+  if (order.phone || order.cuit) {
+    page.text(
+      "F1",
+      7.5,
+      LEFT + 4,
+      y - 34,
+      clip([order.customerName, order.cuit && `CUIT ${order.cuit}`, order.phone].filter(Boolean).join(" · "), 52),
+    );
+  }
+
+  page.text("F1", 8, totalsX, y - 6, "SubTotal");
+  page.text("F1", 8, totalsX + 90, y - 6, subtotal == null ? "—" : money(subtotal), "right", 100);
+  page.text("F1", 8, totalsX, y - 20, "SubTotal Impuestos");
+  page.text("F1", 8, totalsX + 90, y - 20, money(0), "right", 100);
+  page.text("F1", 8, totalsX, y - 34, "Desc/Rec");
+  page.text("F1", 8, totalsX + 90, y - 34, money(0), "right", 100);
+  page.stroke(COMPANY.ink);
+  page.line(totalsX, y - 42, RIGHT, y - 42, 0.6);
+  page.fill(COMPANY.ink);
+  page.text("F2", 9, totalsX, y - 56, "Sub Total $");
+  page.text("F2", 9, totalsX + 90, y - 56, subtotal == null ? "—" : money(subtotal), "right", 100);
+
+  y -= 78;
+  page.stroke(COMPANY.ink);
+  page.line(LEFT, y + 12, RIGHT, y + 12, 0.5);
+  for (let index = 1; index <= 5; index += 1) {
+    page.fill(COMPANY.ink);
+    page.text("F1", 7.5, LEFT + 4, y, `Detalle de la Forma de Pago ${index}`);
+    page.text("F1", 7, LEFT + 180, y, "Financiación");
+    page.text("F1", 7, LEFT + 320, y, "Imp.");
+    page.text("F1", 7, LEFT + 420, y, "Total");
+    page.stroke(COMPANY.ink);
+    page.line(LEFT, y - 6, RIGHT, y - 6, 0.4);
+    y -= 16;
+  }
+
+  drawFooter(page);
   return assemble(pages.map((sheet) => sheet.toString()));
 }
 
