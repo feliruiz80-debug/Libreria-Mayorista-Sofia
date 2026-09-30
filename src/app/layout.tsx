@@ -47,7 +47,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
         <CartProvider>
           <UpdateButton />
           <SiteHeader />
-          <main className="mx-auto w-full max-w-lg flex-1 pb-56">{children}</main>
+          <main className="mx-auto w-full max-w-lg flex-1 pb-40">{children}</main>
           <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30">
             <div className="pointer-events-auto mx-auto grid max-w-lg">
               <FloatingCart />

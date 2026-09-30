@@ -108,72 +108,71 @@ export function BottomNav() {
       aria-label="Navegación principal"
       onPointerDown={onPointerDown}
     >
-      <span className="dock-bubble" aria-hidden="true" />
-      <div className="dock-glass" aria-hidden="true" />
-      <div className="dock-row">
-        {items.map((item) => {
-          const isActive = active(item.id);
-          return (
-            <Link
-              key={item.id}
-              draggable={false}
-              onDragStart={(event) => event.preventDefault()}
-              href={item.id === "search" ? searchHref() : item.href}
-              onClick={(event) => {
-                if (!gesture.current.swiped) return;
-                event.preventDefault();
-                gesture.current.swiped = false;
-              }}
-              aria-current={isActive ? "page" : undefined}
-              aria-expanded={item.id === "search" ? searching : undefined}
-              className="dock-link"
-            >
-              <span className="dock-ico">
-                <NavIcon id={item.id} />
-                {item.id === "cart" && count > 0 ? (
-                  <span className="dock-badge">{count > 9 ? "9+" : count}</span>
-                ) : null}
-              </span>
-              {item.label}
-              <span className="dock-tick" aria-hidden="true" />
-            </Link>
-          );
-        })}
+      <div className="dock-track">
+        <span className="dock-pill" aria-hidden="true" />
+        <div className="dock-row">
+          {items.map((item) => {
+            const isActive = active(item.id);
+            return (
+              <Link
+                key={item.id}
+                draggable={false}
+                onDragStart={(event) => event.preventDefault()}
+                href={item.id === "search" ? searchHref() : item.href}
+                onClick={(event) => {
+                  if (!gesture.current.swiped) return;
+                  event.preventDefault();
+                  gesture.current.swiped = false;
+                }}
+                aria-current={isActive ? "page" : undefined}
+                aria-expanded={item.id === "search" ? searching : undefined}
+                className="dock-link"
+              >
+                <span className="dock-ico">
+                  <NavIcon id={item.id} />
+                  {item.id === "cart" && count > 0 ? (
+                    <span className="dock-badge">{count > 9 ? "9+" : count}</span>
+                  ) : null}
+                </span>
+                {item.label}
+              </Link>
+            );
+          })}
+        </div>
       </div>
     </nav>
   );
 }
 
 function NavIcon({ id }: { id: (typeof items)[number]["id"] }) {
-  const common = "h-6 w-6";
   if (id === "home") {
     return (
-      <svg className={common} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="M4 10.5 12 4l8 6.5V20a1 1 0 0 1-1 1h-5v-6H10v6H5a1 1 0 0 1-1-1v-9.5Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <svg className="dock-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="M4.5 10.6 12 4.5l7.5 6.1V19a1 1 0 0 1-1 1h-4.1v-5.2H9.6V20H5.5a1 1 0 0 1-1-1v-8.4Z" />
       </svg>
     );
   }
   if (id === "promos") {
     return (
-      <svg className={common} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <path d="m12 3 2.2 4.5 5 .7-3.6 3.5.9 5L12 14.8 7.5 16.7l.9-5L4.8 8.2l5-.7L12 3Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+      <svg className="dock-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <path d="m12 3.4 2 4.3 4.7.5-3.5 3.2 1 4.6L12 13.8 7.8 16l1-4.6L5.3 8.2l4.7-.5 2-4.3Z" />
       </svg>
     );
   }
   if (id === "search") {
     return (
-      <svg className={common} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-        <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.8" />
-        <path d="m20 20-3.2-3.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+      <svg className="dock-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+        <circle cx="11" cy="11" r="6.15" />
+        <path d="m16 16 4.2 4.2" />
       </svg>
     );
   }
   return (
-    <svg className={common} viewBox="0 0 24 24" fill="none" aria-hidden="true">
-      <path d="M6 6h15l-1.5 9h-12Z" stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
-      <path d="M6 6 5 3H2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
-      <circle cx="9" cy="20" r="1.4" fill="currentColor" />
-      <circle cx="18" cy="20" r="1.4" fill="currentColor" />
+    <svg className="dock-svg" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+      <path d="M6.2 7.2h13.4l-1.15 8H8.05L6.2 7.2Z" />
+      <path d="M6.2 7.2 5.2 4.4H3" />
+      <circle cx="9.2" cy="19.3" r="1.15" />
+      <circle cx="16.6" cy="19.3" r="1.15" />
     </svg>
   );
 }

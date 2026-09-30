@@ -210,77 +210,63 @@ dialog.panel::backdrop {
   backdrop-filter: blur(8px);
 }
 
-/* Barra flotante: vidrio suave y el ítem activo levantado en un círculo. */
+/* Cápsula flotante. La sección activa es una pastilla que se desliza adentro. */
 .dock {
   position: relative;
-  margin: 0 0.7rem calc(0.4rem + env(safe-area-inset-bottom));
-  touch-action: none;
-  transition: --dock-x 520ms var(--ease);
-}
-
-.dock-glass {
-  position: absolute;
-  inset: 0;
-  border-radius: 1.85rem;
-  pointer-events: none;
-  background: color-mix(in srgb, white 72%, transparent);
-  border: 1px solid color-mix(in srgb, white 78%, transparent);
-  box-shadow:
-    0 12px 32px rgba(27, 29, 33, 0.1),
-    inset 0 1px 0 color-mix(in srgb, white 80%, transparent);
-  backdrop-filter: blur(18px) saturate(1.3);
-  mask-image: radial-gradient(circle 1.42rem at var(--dock-x) 0.42rem, transparent 1.3rem, #000 1.4rem);
-}
-
-.dock-rest .dock-glass {
-  mask-image: none;
-}
-
-.dock-bubble {
-  position: absolute;
-  z-index: 1;
-  top: -0.42rem;
-  left: var(--dock-x);
-  width: 2.45rem;
-  height: 2.45rem;
-  transform: translateX(-50%);
+  display: grid;
+  margin: 0 0.85rem calc(0.55rem + env(safe-area-inset-bottom));
+  padding: 0.28rem;
   border-radius: 999px;
-  pointer-events: none;
-  background: color-mix(in srgb, white 78%, var(--color-primary) 10%);
-  border: 1px solid color-mix(in srgb, white 82%, transparent);
-  box-shadow:
-    0 8px 18px rgba(1, 77, 155, 0.14),
-    inset 0 1px 0 color-mix(in srgb, white 90%, transparent);
-  backdrop-filter: blur(14px) saturate(1.4);
-  transition: opacity 280ms var(--ease);
+  background: color-mix(in srgb, white 86%, var(--color-bg));
+  box-shadow: 0 10px 28px rgba(27, 29, 33, 0.1);
+  backdrop-filter: blur(16px);
+  touch-action: none;
+  transition: --dock-x 320ms var(--ease);
 }
 
-.dock-rest .dock-bubble {
+.dock-track {
+  position: relative;
+}
+
+.dock-pill {
+  position: absolute;
+  z-index: 0;
+  top: 0;
+  bottom: 0;
+  left: calc(var(--dock-x) - 12.5%);
+  width: 25%;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 12%, white);
+  pointer-events: none;
+  transition: opacity 200ms var(--ease);
+}
+
+.dock-rest .dock-pill {
   opacity: 0;
 }
 
 .dock-row {
   position: relative;
-  z-index: 2;
+  z-index: 1;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  min-height: 4.35rem;
 }
 
 .dock-link {
   display: flex;
   min-width: 0;
+  min-height: 3.15rem;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-end;
-  gap: 0.12rem;
-  padding: 0.35rem 0.2rem 0.45rem;
-  color: color-mix(in srgb, var(--color-text) 58%, transparent);
+  justify-content: center;
+  gap: 0.18rem;
+  padding: 0.35rem 0.15rem;
+  color: color-mix(in srgb, var(--color-text) 46%, transparent);
   font-size: 0.68rem;
   font-weight: 600;
   letter-spacing: -0.01em;
-  line-height: 1.1;
-  transition: color 320ms var(--ease);
+  line-height: 1;
+  transition: color 220ms var(--ease);
 }
 
 .dock-link[aria-current="page"] {
@@ -291,46 +277,34 @@ dialog.panel::backdrop {
 .dock-ico {
   position: relative;
   display: grid;
-  width: 1.55rem;
-  height: 1.55rem;
   place-items: center;
-  transition: transform 520ms var(--ease);
 }
 
-.dock-link[aria-current="page"] .dock-ico {
-  transform: translateY(-0.95rem);
-}
-
-.dock-tick {
-  width: 1.15rem;
-  height: 2px;
-  border-radius: 999px;
-  background: var(--color-primary);
-  opacity: 0;
-  transform: scaleX(0.35);
-  transition: opacity 280ms var(--ease), transform 420ms var(--ease);
-}
-
-.dock-link[aria-current="page"] .dock-tick {
-  opacity: 1;
-  transform: scaleX(1);
+.dock-svg {
+  width: 1.3rem;
+  height: 1.3rem;
+  stroke: currentColor;
+  stroke-width: 1.6;
+  stroke-linecap: round;
+  stroke-linejoin: round;
 }
 
 .dock-badge {
   position: absolute;
-  top: -0.35rem;
-  right: -0.55rem;
+  top: -0.38rem;
+  right: -0.62rem;
   display: grid;
-  min-width: 1.05rem;
-  min-height: 1.05rem;
+  min-width: 1rem;
+  min-height: 1rem;
   place-items: center;
   border-radius: 999px;
   background: var(--color-primary);
-  padding: 0 0.2rem;
+  padding: 0 0.22rem;
   color: white;
-  font-size: 0.62rem;
+  font-size: 0.6rem;
   font-weight: 700;
   line-height: 1;
+  box-shadow: 0 0 0 2px color-mix(in srgb, white 86%, var(--color-bg));
 }
 
 .float-chip {
@@ -348,7 +322,7 @@ dialog.panel::backdrop {
   left: 0;
   right: 0;
   top: calc(5.35rem + env(safe-area-inset-top));
-  bottom: calc(5.7rem + env(safe-area-inset-bottom));
+  bottom: calc(4.85rem + env(safe-area-inset-bottom));
   margin-inline: auto;
   max-width: 32rem;
   display: flex;
@@ -491,9 +465,8 @@ dialog.panel::backdrop {
   .search-sheet,
   .update-banner,
   .dock,
-  .dock-ico,
-  .dock-tick,
-  .dock-bubble,
+  .dock-pill,
+  .dock-link,
   .app-in,
   .float-chip,
   .qty button {
