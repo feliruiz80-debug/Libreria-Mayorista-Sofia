@@ -51,7 +51,7 @@ export function orderMessage(order: Order): string {
     "",
     `👤 Cliente: ${order.customerName}`,
     `🏪 Comercio: ${order.businessName.trim() || "—"}`,
-    `🪪 CUIT: ${order.cuit.trim() || "—"}`,
+    `🪪 CUIL/CUIT: ${order.cuit.trim() || "—"}`,
     `📞 Teléfono: ${order.phone}`,
     `📍 Dirección: ${order.address.trim() || "—"}`,
     `🚚 Entrega: ${order.delivery === "envio" ? "Envío" : "Retiro en local"}`,

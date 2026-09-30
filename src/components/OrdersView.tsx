@@ -48,7 +48,7 @@ export function OrdersView() {
                 </div>
                 <p className="mt-1 font-semibold">{order.customerName}</p>
                 <p className="muted mt-1 text-sm">
-                  {[order.businessName, order.cuit && `CUIT ${order.cuit}`, order.phone].filter(Boolean).join(" · ")}
+                  {[order.businessName, order.cuit && `CUIL/CUIT ${order.cuit}`, order.phone].filter(Boolean).join(" · ")}
                 </p>
                 <p className="mt-1 text-sm">
                   {order.delivery === "envio" ? "Envío" : "Retiro en local"}

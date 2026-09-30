@@ -58,7 +58,7 @@ export function CartView({ products }: { products: Product[] }) {
       return null;
     }
     if (cuitDigits && cuitDigits.length !== 11) {
-      setError("El CUIT tiene que tener 11 números, o dejalo vacío.");
+      setError("El CUIL o CUIT tiene que tener 11 números, o dejalo vacío.");
       return null;
     }
     if (known.length === 0) {
@@ -211,7 +211,7 @@ export function CartView({ products }: { products: Product[] }) {
           required
         />
         <Field
-          label="CUIT"
+          label="CUIL o CUIT (opcional)"
           value={cuit}
           onChange={(value) => patchCustomerProfile({ cuit: value })}
           inputMode="numeric"
@@ -289,7 +289,7 @@ export function CartView({ products }: { products: Product[] }) {
             </h2>
             <p className="text-sm">
               {draft.customerName} · {draft.businessName}
-              {draft.cuit ? ` · CUIT ${draft.cuit}` : ""}
+              {draft.cuit ? ` · CUIL/CUIT ${draft.cuit}` : ""}
             </p>
             <p className="muted text-sm">
               {draft.phone} · {draft.address} · {draft.delivery === "envio" ? "Envío" : "Retiro en local"}

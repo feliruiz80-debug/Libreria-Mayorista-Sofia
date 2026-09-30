@@ -233,8 +233,8 @@ function drawClientBox(page: Sheet, order: Order, top: number): number {
   page.text("F2", 8, leftX, top - 42, "I.V.A.:");
   page.text("F1", 8, leftX + 34, top - 42, "—");
   if (order.cuit) {
-    page.text("F2", 8, leftX, top - 54, "CUIT:");
-    page.text("F1", 8, leftX + 32, top - 54, order.cuit);
+    page.text("F2", 8, leftX, top - 54, "CUIL/CUIT:");
+    page.text("F1", 8, leftX + 56, top - 54, order.cuit);
   }
 
   page.text("F2", 8, rightX, top - 14, "Fecha Presupuesto:");
@@ -338,7 +338,7 @@ export function buildOrderPdf(order: Order): Uint8Array {
       7.5,
       LEFT + 4,
       y - 34,
-      clip([order.customerName, order.cuit && `CUIT ${order.cuit}`, order.phone].filter(Boolean).join(" · "), 52),
+      clip([order.customerName, order.cuit && `CUIL/CUIT ${order.cuit}`, order.phone].filter(Boolean).join(" · "), 52),
     );
   }
 

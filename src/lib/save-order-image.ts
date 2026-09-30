@@ -162,9 +162,9 @@ function drawOrderImage(order: Order, logo: HTMLImageElement | null): HTMLCanvas
   ctx.font = "400 18px Arial";
   ctx.fillText("—", LEFT + 80, y + 80);
   ctx.font = "700 18px Arial";
-  ctx.fillText("CUIT:", LEFT + 14, y + 106);
+  ctx.fillText("CUIL/CUIT:", LEFT + 14, y + 106);
   ctx.font = "400 18px Arial";
-  ctx.fillText(order.cuit || "—", LEFT + 80, y + 106);
+  ctx.fillText(order.cuit || "—", LEFT + 128, y + 106);
 
   ctx.font = "700 18px Arial";
   ctx.fillText("Fecha Presupuesto:", split + 14, y + 28);

@@ -225,8 +225,7 @@ dialog.panel::backdrop {
   flex-direction: column;
   overflow: hidden;
   background: var(--color-bg);
-  border: 1px solid var(--color-line);
-  border-bottom: none;
+  border: none;
   border-radius: var(--radius) var(--radius) 0 0;
   box-shadow: 0 -18px 40px rgba(27, 29, 33, 0.08);
   padding: 0.2rem 1rem 0.75rem;
@@ -248,14 +247,20 @@ dialog.panel::backdrop {
   padding: 0.15rem 0;
 }
 
-.search-field .control {
+.search-field .control,
+.search-field .control:focus,
+.search-field .control:focus-visible {
   min-height: 44px;
   border: none;
-  border-bottom: 1px solid color-mix(in srgb, var(--color-text) 18%, transparent);
   background: transparent;
   border-radius: 0;
+  box-shadow: none;
+  outline: none;
+  outline-offset: 0;
   padding-left: 0.15rem;
   font-weight: 400;
+  -webkit-appearance: none;
+  appearance: none;
 }
 
 .search-close {

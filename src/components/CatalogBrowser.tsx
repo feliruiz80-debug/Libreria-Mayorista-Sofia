@@ -30,7 +30,7 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
   const focusSearch = searchParams.get("buscar") === "1";
   const searchRef = useRef<HTMLInputElement>(null);
   const sheetRef = useRef<HTMLElement>(null);
-  const drag = useRef<{ y: number; dy: number } | null>(null);
+  const bodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (focusSearch) searchRef.current?.focus();
@@ -72,27 +72,52 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
     router.replace(suffix ? `/catalogo?${suffix}` : "/catalogo", { scroll: false });
   }
 
-  function onHandleStart(event: ReactPointerEvent) {
+  function onSheetPointerDown(event: ReactPointerEvent<HTMLElement>) {
     if (event.pointerType === "mouse" && event.button !== 0) return;
-    const target = event.target as HTMLElement;
-    if (target.closest("input, button")) return;
-    drag.current = { y: event.clientY, dy: 0 };
-    event.currentTarget.setPointerCapture(event.pointerId);
-  }
+    if ((event.target as HTMLElement).closest("button")) return;
+    const body = bodyRef.current;
+    const inBody = !!body?.contains(event.target as Node);
+    if (body && inBody && body.scrollTop > 0) return;
 
-  function onHandleMove(event: ReactPointerEvent) {
-    if (!drag.current || !sheetRef.current) return;
-    const dy = Math.max(0, event.clientY - drag.current.y);
-    drag.current.dy = dy;
-    sheetRef.current.style.transform = `translateY(${dy}px)`;
-  }
+    const startY = event.clientY;
+    let dy = 0;
+    let tracking = true;
 
-  function onHandleEnd() {
-    if (!drag.current || !sheetRef.current) return;
-    const dy = drag.current.dy;
-    drag.current = null;
-    if (dy > 72) closeSearch();
-    else sheetRef.current.style.transform = "";
+    function stop() {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    }
+
+    function onMove(ev: PointerEvent) {
+      if (!tracking || !sheetRef.current) return;
+      if (inBody && (bodyRef.current?.scrollTop ?? 0) > 0) {
+        tracking = false;
+        stop();
+        return;
+      }
+      const next = ev.clientY - startY;
+      if (next < 12) return;
+      dy = next;
+      sheetRef.current.style.transform = `translateY(${next}px)`;
+    }
+
+    function onUp() {
+      if (!tracking) return;
+      tracking = false;
+      stop();
+      const sheet = sheetRef.current;
+      if (!sheet) return;
+      if (dy > 72) {
+        closeSearch();
+        return;
+      }
+      sheet.style.transform = "";
+    }
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
   }
 
   const hasSearchQuery = query.trim().length > 0;
@@ -136,15 +161,13 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
       </p>
 
       {focusSearch ? (
-        <section ref={sheetRef} className="search-sheet" aria-label="Buscar">
-          <form
-            className="search-handle search-field"
-            onSubmit={(event) => event.preventDefault()}
-            onPointerDown={onHandleStart}
-            onPointerMove={onHandleMove}
-            onPointerUp={onHandleEnd}
-            onPointerCancel={onHandleEnd}
-          >
+        <section
+          ref={sheetRef}
+          className="search-sheet"
+          aria-label="Buscar"
+          onPointerDown={onSheetPointerDown}
+        >
+          <form className="search-handle search-field" onSubmit={(event) => event.preventDefault()}>
             <svg className="h-5 w-5 shrink-0 text-[var(--color-primary)]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.8" />
               <path d="m20 20-3.2-3.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
@@ -164,7 +187,9 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
               ×
             </button>
           </form>
-          <div className="search-body">{productList}</div>
+          <div ref={bodyRef} className="search-body">
+            {productList}
+          </div>
         </section>
       ) : (
         productList
