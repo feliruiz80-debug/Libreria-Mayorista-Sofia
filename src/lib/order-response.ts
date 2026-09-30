@@ -6,7 +6,7 @@ export function orderPdfResponse(order: Order): Response {
   return new Response(Buffer.from(pdf), {
     headers: {
       "Content-Type": "application/pdf",
-      "Content-Disposition": 'inline; filename="nota-pedido.pdf"',
+      "Content-Disposition": 'inline; filename="presupuesto.pdf"',
       "Cache-Control": "private, max-age=3600",
     },
   });

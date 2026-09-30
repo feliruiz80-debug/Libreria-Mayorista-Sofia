@@ -67,6 +67,7 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
   function closeSearch() {
     const params = new URLSearchParams(searchParams.toString());
     params.delete("buscar");
+    params.delete("q");
     const suffix = params.toString();
     router.replace(suffix ? `/catalogo?${suffix}` : "/catalogo", { scroll: false });
   }
@@ -94,25 +95,31 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
     else sheetRef.current.style.transform = "";
   }
 
-  const productList =
-    grouped.length === 0 ? (
-      <p className="panel muted mt-6 px-4 py-8 text-center" role="status">
-        No hay productos para esa búsqueda.
-      </p>
-    ) : (
-      <div className="mt-5 space-y-6">
-        {grouped.map((group) => (
-          <section key={group.name} aria-label={group.name}>
-            {section ? null : <h2 className="kicker">{group.name}</h2>}
-            <div className={`grid grid-cols-2 gap-3 ${section ? "" : "mt-3"}`}>
-              {group.products.map((product) => (
-                <ProductCard key={product.id} product={product} />
-              ))}
-            </div>
-          </section>
-        ))}
-      </div>
-    );
+  const hasSearchQuery = query.trim().length > 0;
+  const showSearchResults = !focusSearch || hasSearchQuery;
+
+  const productList = !showSearchResults ? (
+    <p className="muted mt-8 px-4 py-8 text-center text-sm" role="status">
+      Escribí para buscar productos.
+    </p>
+  ) : grouped.length === 0 ? (
+    <p className="panel muted mt-6 px-4 py-8 text-center" role="status">
+      No hay productos para esa búsqueda.
+    </p>
+  ) : (
+    <div className="mt-5 space-y-6">
+      {grouped.map((group) => (
+        <section key={group.name} aria-label={group.name}>
+          {section ? null : <h2 className="kicker">{group.name}</h2>}
+          <div className={`grid grid-cols-2 gap-3 ${section ? "" : "mt-3"}`}>
+            {group.products.map((product) => (
+              <ProductCard key={product.id} product={product} />
+            ))}
+          </div>
+        </section>
+      ))}
+    </div>
+  );
 
   return (
     <div className="px-4 py-4">
@@ -123,21 +130,21 @@ export function CatalogBrowser({ catalog }: { catalog: Catalog }) {
         <h1 className="display min-w-0 truncate text-3xl leading-none">{section || "Catálogo"}</h1>
       </div>
       <p className="muted mt-1 text-xs">
-        {visible.length} productos · {formatDateTime(catalog.fetchedAt)}
+        {focusSearch && !hasSearchQuery
+          ? formatDateTime(catalog.fetchedAt)
+          : `${visible.length} productos · ${formatDateTime(catalog.fetchedAt)}`}
       </p>
 
       {focusSearch ? (
         <section ref={sheetRef} className="search-sheet" aria-label="Buscar">
-          <div
-            className="search-handle"
+          <form
+            className="search-handle search-field"
+            onSubmit={(event) => event.preventDefault()}
             onPointerDown={onHandleStart}
             onPointerMove={onHandleMove}
             onPointerUp={onHandleEnd}
             onPointerCancel={onHandleEnd}
           >
-            <span className="search-grab" aria-hidden="true" />
-          </div>
-          <form className="search-field" onSubmit={(event) => event.preventDefault()}>
             <svg className="h-5 w-5 shrink-0 text-[var(--color-primary)]" viewBox="0 0 24 24" fill="none" aria-hidden="true">
               <circle cx="11" cy="11" r="7" stroke="currentColor" strokeWidth="1.8" />
               <path d="m20 20-3.2-3.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
