@@ -459,6 +459,281 @@ dialog.panel::backdrop {
   transform: scale(0.94);
 }
 
+/* Abrir foto → visor 3D del producto. */
+.product-card__media {
+  position: absolute;
+  inset: 0;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: zoom-in;
+}
+
+.product-card__media-hint {
+  position: absolute;
+  right: 0.55rem;
+  bottom: 0.55rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-text) 72%, transparent);
+  color: white;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  padding: 0.28rem 0.55rem;
+  opacity: 0.88;
+  pointer-events: none;
+}
+
+.product-viewer {
+  width: min(36rem, 100vw);
+  max-width: 100vw;
+  height: min(42rem, 100dvh);
+  max-height: 100dvh;
+  margin: auto;
+  padding: 0;
+  border: none;
+  border-radius: calc(var(--radius) + 0.15rem);
+  background: color-mix(in srgb, white 92%, var(--color-bg));
+  color: var(--color-text);
+  overflow: hidden;
+  box-shadow: 0 28px 80px rgba(27, 29, 33, 0.28);
+}
+
+.product-viewer::backdrop {
+  background: color-mix(in srgb, var(--color-text) 48%, transparent);
+  backdrop-filter: blur(10px);
+}
+
+.product-viewer__chrome {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem 1rem 0.55rem;
+}
+
+.product-viewer__close {
+  order: 2;
+  display: grid;
+  height: 2.5rem;
+  width: 2.5rem;
+  place-items: center;
+  border-radius: 999px;
+  border: 1px solid var(--color-line);
+  background: white;
+  color: var(--color-primary);
+  font-size: 1.45rem;
+  font-weight: 600;
+  line-height: 1;
+}
+
+.product-viewer__track {
+  display: flex;
+  width: 100%;
+  height: calc(100% - 8.5rem);
+  transition: transform 360ms var(--ease);
+  touch-action: pan-y;
+}
+
+.product-viewer__panel {
+  position: relative;
+  flex: 0 0 100%;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  padding: 0.35rem 1rem 0.5rem;
+}
+
+.product-viewer__photo {
+  position: relative;
+  flex: 1;
+  min-height: 16rem;
+  border-radius: var(--radius);
+  background:
+    radial-gradient(circle at 50% 20%, color-mix(in srgb, white 80%, transparent), transparent 55%),
+    linear-gradient(180deg, color-mix(in srgb, var(--color-primary) 8%, var(--color-bg)), var(--color-bg));
+  overflow: hidden;
+}
+
+.product-viewer__stage {
+  position: relative;
+  flex: 1;
+  min-height: 16rem;
+  border-radius: var(--radius);
+  overflow: hidden;
+  touch-action: none;
+  cursor: grab;
+  perspective: 900px;
+  background:
+    radial-gradient(ellipse at 50% 18%, color-mix(in srgb, white 70%, transparent), transparent 48%),
+    linear-gradient(165deg, #dce7f4 0%, var(--color-bg) 48%, #e8ddd2 100%);
+}
+
+.product-viewer__stage:active {
+  cursor: grabbing;
+}
+
+.product-viewer__floor {
+  position: absolute;
+  left: 12%;
+  right: 12%;
+  bottom: 14%;
+  height: 18%;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(27, 29, 33, 0.22), transparent 68%);
+  filter: blur(2px);
+  pointer-events: none;
+}
+
+.product-viewer__orbit {
+  position: absolute;
+  inset: 12% 10% 18%;
+  transform-style: preserve-3d;
+  transition: transform 40ms linear;
+  will-change: transform;
+}
+
+.product-viewer__card {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  border-radius: 1.25rem;
+  background: color-mix(in srgb, white 88%, var(--color-bg));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 16%, transparent);
+  box-shadow:
+    0 18px 40px rgba(27, 29, 33, 0.16),
+    inset 0 1px 0 rgba(255, 255, 255, 0.65);
+  transform: translateZ(28px);
+  overflow: hidden;
+}
+
+.product-viewer__hint {
+  margin-top: 0.65rem;
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: color-mix(in srgb, var(--color-text) 58%, var(--color-bg));
+}
+
+.product-viewer__dots {
+  display: flex;
+  justify-content: center;
+  gap: 0.4rem;
+  padding-bottom: 0.35rem;
+}
+
+.product-viewer__dots span {
+  width: 0.4rem;
+  height: 0.4rem;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--color-primary) 22%, transparent);
+}
+
+.product-viewer__dots span.is-active {
+  width: 1.1rem;
+  background: var(--color-primary);
+}
+
+.product-viewer__tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.45rem;
+  padding: 0 1rem calc(0.85rem + env(safe-area-inset-bottom));
+}
+
+.product-viewer__tabs button {
+  min-height: 2.65rem;
+  border-radius: 999px;
+  border: 1px solid var(--color-line);
+  background: white;
+  color: var(--color-primary);
+  font-size: 0.86rem;
+  font-weight: 700;
+}
+
+.product-viewer__tabs button.is-active {
+  background: var(--color-primary);
+  border-color: var(--color-primary);
+  color: white;
+}
+
+.filgo-pack {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  transform-style: preserve-3d;
+}
+
+.filgo-pack__box {
+  position: absolute;
+  left: 18%;
+  right: 18%;
+  top: 10%;
+  bottom: 34%;
+  border-radius: 1.1rem;
+  background: color-mix(in srgb, white 90%, var(--color-bg));
+  border: 1px solid color-mix(in srgb, var(--color-primary) 18%, transparent);
+  box-shadow: 0 16px 34px rgba(27, 29, 33, 0.18);
+  transform: translateZ(40px);
+  overflow: hidden;
+}
+
+.filgo-pack__fan {
+  position: absolute;
+  left: 50%;
+  bottom: 8%;
+  width: 0;
+  height: 0;
+  transform-style: preserve-3d;
+  transform: translateZ(12px);
+}
+
+.filgo-pencil {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 0.72rem;
+  height: 7.2rem;
+  border-radius: 0.35rem 0.35rem 0.18rem 0.18rem;
+  background:
+    linear-gradient(180deg, #f5e6c8 0 12%, var(--pencil) 12% 78%, #d6b27a 78% 88%, #5b4636 88% 100%);
+  box-shadow:
+    inset -2px 0 0 rgba(0, 0, 0, 0.12),
+    inset 2px 0 0 rgba(255, 255, 255, 0.18),
+    0 8px 14px rgba(27, 29, 33, 0.18);
+  transform-origin: 50% 92%;
+}
+
+.filgo-pencil::before {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: -0.55rem;
+  width: 0;
+  height: 0;
+  border-left: 0.36rem solid transparent;
+  border-right: 0.36rem solid transparent;
+  border-bottom: 0.7rem solid var(--pencil);
+  transform: translateX(-50%);
+}
+
+.filgo-pack__label {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0.2rem;
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--color-primary);
+  transform: translateZ(50px);
+}
+
 @media (prefers-reduced-motion: reduce) {
   .btn,
   .lift,
@@ -469,7 +744,9 @@ dialog.panel::backdrop {
   .dock-link,
   .app-in,
   .float-chip,
-  .qty button {
+  .qty button,
+  .product-viewer__track,
+  .product-viewer__orbit {
     transition: none;
     animation: none;
   }

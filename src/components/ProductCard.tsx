@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import { useState } from "react";
+import { ProductViewer3D } from "@/components/ProductViewer3D";
 import { QuantityControl } from "@/components/QuantityControl";
 import { useCart } from "@/components/CartProvider";
 import { formatMoney } from "@/lib/format";
@@ -13,6 +14,7 @@ export function ProductCard({ product }: { product: Product }) {
   const inCart = quantityOf(product.id);
   const unit = sellingUnit(product.presentation);
   const [draft, setDraft] = useState(unit.step);
+  const [viewerOpen, setViewerOpen] = useState(false);
   const price = product.price == null ? "Consultar" : formatMoney(product.price);
   const shown = inCart > 0 ? inCart : draft;
 
@@ -26,14 +28,24 @@ export function ProductCard({ product }: { product: Product }) {
     <article className="panel flex h-full flex-col overflow-hidden">
       <div className="relative aspect-square bg-[var(--color-bg)]">
         {product.imageUrl ? (
-          <Image
-            src={product.imageUrl}
-            alt={`Foto de ${product.name}`}
-            fill
-            unoptimized
-            sizes="(max-width: 32rem) 50vw, 16rem"
-            className="object-contain p-3"
-          />
+          <button
+            type="button"
+            className="product-card__media"
+            onClick={() => setViewerOpen(true)}
+            aria-label={`Ver ${product.name} en visor 3D`}
+          >
+            <Image
+              src={product.imageUrl}
+              alt={`Foto de ${product.name}`}
+              fill
+              unoptimized
+              sizes="(max-width: 32rem) 50vw, 16rem"
+              className="object-contain p-3"
+            />
+            <span className="product-card__media-hint" aria-hidden="true">
+              Tocar
+            </span>
+          </button>
         ) : (
           <div className="muted grid h-full place-items-center px-3 text-center text-xs font-semibold">
             {product.brand || "Sin foto"}
@@ -69,6 +81,9 @@ export function ProductCard({ product }: { product: Product }) {
           </button>
         )}
       </div>
+      {product.imageUrl && viewerOpen ? (
+        <ProductViewer3D product={product} open={viewerOpen} onClose={() => setViewerOpen(false)} />
+      ) : null}
     </article>
   );
 }
