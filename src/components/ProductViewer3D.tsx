@@ -8,12 +8,12 @@ import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from "react";
-import { boxForProduct, texturesForProduct } from "@/lib/product-3d";
+import { boxForProduct, texturesForProduct, type ProductBoxTextures } from "@/lib/product-3d";
 import type { Product } from "@/lib/types";
 
-const ANGLE_STEP = 40;
-const DEFAULT_YAW = -32;
-const DEFAULT_PITCH = -16;
+const ANGLE_STEP = 42;
+const DEFAULT_YAW = -28;
+const DEFAULT_PITCH = -8;
 
 type Props = {
   product: Product;
@@ -30,6 +30,7 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
   const draggingRef = useRef(false);
   const rafRef = useRef(0);
   const orbitRef = useRef<HTMLDivElement>(null);
+  const shadowRef = useRef<HTMLDivElement>(null);
   const [yaw, setYaw] = useState(DEFAULT_YAW);
   const [pitch, setPitch] = useState(DEFAULT_PITCH);
 
@@ -62,7 +63,7 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
     const tick = () => {
       if (!draggingRef.current && Math.abs(velocityRef.current) > 0.02) {
         yawRef.current += velocityRef.current;
-        velocityRef.current *= 0.93;
+        velocityRef.current *= 0.94;
         setYaw(yawRef.current);
       } else if (!draggingRef.current) {
         velocityRef.current = 0;
@@ -70,6 +71,12 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
 
       if (orbitRef.current) {
         orbitRef.current.style.transform = `rotateX(${pitchRef.current}deg) rotateY(${yawRef.current}deg)`;
+      }
+      if (shadowRef.current) {
+        const stretch = 1 + Math.abs(Math.sin((yawRef.current * Math.PI) / 180)) * 0.22;
+        const offsetX = Math.sin((yawRef.current * Math.PI) / 180) * 18;
+        shadowRef.current.style.transform = `translateX(calc(-50% + ${offsetX}px)) scaleX(${stretch})`;
+        shadowRef.current.style.opacity = String(0.34 + Math.abs(Math.sin((pitchRef.current * Math.PI) / 180)) * 0.12);
       }
       rafRef.current = requestAnimationFrame(tick);
     };
@@ -104,13 +111,13 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
       const now = performance.now();
       const dx = ev.clientX - startX;
       const dy = ev.clientY - startY;
-      yawRef.current = originYaw + dx * 0.45;
-      pitchRef.current = Math.max(-42, Math.min(16, originPitch - dy * 0.28));
+      yawRef.current = originYaw + dx * 0.42;
+      pitchRef.current = Math.max(-38, Math.min(18, originPitch - dy * 0.26));
       setYaw(yawRef.current);
       setPitch(pitchRef.current);
 
       const dt = Math.max(16, now - lastT);
-      velocityRef.current = ((ev.clientX - lastX) / dt) * 16;
+      velocityRef.current = ((ev.clientX - lastX) / dt) * 15;
       lastX = ev.clientX;
       lastT = now;
     }
@@ -155,6 +162,9 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
         role="application"
         aria-label={`${product.name}. Deslizá para girar la caja en 3D.`}
       >
+        <div className="box-viewer__studio" aria-hidden="true" />
+        <div ref={shadowRef} className="box-viewer__shadow" aria-hidden="true" />
+
         <div
           ref={orbitRef}
           className="box-viewer__orbit"
@@ -188,6 +198,8 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
         >
           <Chevron direction="right" />
         </button>
+
+        <p className="box-viewer__hint">Arrastrá para girar · producto real</p>
       </div>
     </dialog>
   );
@@ -212,21 +224,16 @@ type BoxProps = {
   width: number;
   height: number;
   depth: number;
-  textures: {
-    front: string;
-    back: string;
-    left: string;
-    right: string;
-    top: string;
-    bottom: string;
-  };
+  textures: ProductBoxTextures;
 };
 
-/** Caja rectangular fina: foto real al frente, laterales de packaging. */
+/** Caja retail con foto real al frente, laterales y solapa colgante. */
 function ProductBox3D({ width: w, height: h, depth: d, textures }: BoxProps) {
   const halfD = d / 2;
   const halfW = w / 2;
   const halfH = h / 2;
+  const tabH = Math.round(h * 0.12);
+  const tabW = Math.round(w * 0.72);
 
   const face = (url: string, extra: CSSProperties = {}): CSSProperties => ({
     backgroundImage: `url(${url})`,
@@ -238,6 +245,19 @@ function ProductBox3D({ width: w, height: h, depth: d, textures }: BoxProps) {
 
   return (
     <div className="product-box3d" style={{ width: w, height: h }} aria-hidden="true">
+      {textures.tab ? (
+        <div
+          className="product-box3d__tab"
+          style={face(textures.tab, {
+            width: tabW,
+            height: tabH,
+            left: (w - tabW) / 2,
+            top: -tabH + 2,
+            transform: `translateZ(${-halfD + 1}px)`,
+          })}
+        />
+      ) : null}
+
       <div
         className="product-box3d__face product-box3d__face--front"
         style={face(textures.front, {
@@ -245,14 +265,15 @@ function ProductBox3D({ width: w, height: h, depth: d, textures }: BoxProps) {
           height: h,
           transform: `translateZ(${halfD}px)`,
         })}
-      />
+      >
+        <span className="product-box3d__gloss" />
+      </div>
       <div
         className="product-box3d__face product-box3d__face--back"
         style={face(textures.back, {
           width: w,
           height: h,
           transform: `rotateY(180deg) translateZ(${halfD}px)`,
-          filter: "brightness(0.78) saturate(0.92)",
         })}
       />
       <div
@@ -262,7 +283,6 @@ function ProductBox3D({ width: w, height: h, depth: d, textures }: BoxProps) {
           height: h,
           left: halfW - halfD,
           transform: `rotateY(90deg) translateZ(${halfW}px)`,
-          filter: "brightness(0.9)",
         })}
       />
       <div
@@ -272,7 +292,6 @@ function ProductBox3D({ width: w, height: h, depth: d, textures }: BoxProps) {
           height: h,
           left: halfW - halfD,
           transform: `rotateY(-90deg) translateZ(${halfW}px)`,
-          filter: "brightness(0.92)",
         })}
       />
       <div
@@ -282,7 +301,6 @@ function ProductBox3D({ width: w, height: h, depth: d, textures }: BoxProps) {
           height: d,
           top: halfH - halfD,
           transform: `rotateX(90deg) translateZ(${halfH}px)`,
-          filter: "brightness(1.04)",
         })}
       />
       <div
@@ -292,7 +310,6 @@ function ProductBox3D({ width: w, height: h, depth: d, textures }: BoxProps) {
           height: d,
           top: halfH - halfD,
           transform: `rotateX(-90deg) translateZ(${halfH}px)`,
-          filter: "brightness(0.68)",
         })}
       />
     </div>

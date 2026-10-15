@@ -13,17 +13,19 @@ export type ProductBoxTextures = {
   right: string;
   top: string;
   bottom: string;
+  tab?: string;
 };
 
 const FILGO_PINTO_FRONT = "/products/filgo-pinto-front.jpg";
 const FILGO_PINTO_SIDE = "/products/filgo-pinto-side.jpg";
 const FILGO_PINTO_EDGE = "/products/filgo-pinto-edge.jpg";
+const FILGO_PINTO_TAB = "/products/filgo-pinto-tab.jpg";
 
-/** Caja Filgo Pinto: alta, angosta y fina (1 fila de lápices). */
+/** Caja Filgo Pinto real: alta, angosta y fina (pack colgante). */
 export const FILGO_PINTO_BOX: BoxSize = {
-  width: 168,
-  height: 430,
-  depth: 22,
+  width: 176,
+  height: 448,
+  depth: 26,
 };
 
 export function isFilgoPintoBox(product: Product) {
@@ -57,6 +59,7 @@ export function texturesForProduct(product: Product): ProductBoxTextures | null 
       right: FILGO_PINTO_SIDE,
       top: FILGO_PINTO_EDGE,
       bottom: FILGO_PINTO_EDGE,
+      tab: FILGO_PINTO_TAB,
     };
   }
 
