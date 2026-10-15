@@ -532,6 +532,7 @@ dialog.panel::backdrop {
   touch-action: none;
   cursor: grab;
   overflow: hidden;
+  transform-style: preserve-3d;
 }
 
 .box-viewer__stage:active {
@@ -568,11 +569,11 @@ dialog.panel::backdrop {
   top: 47%;
   z-index: 2;
   margin: 0;
+  /* No usar filter aquí: aplana preserve-3d y la caja parece una foto. */
   transform-style: preserve-3d;
   transform-origin: center center;
   will-change: transform;
   translate: -50% -50%;
-  filter: drop-shadow(0 32px 38px rgba(20, 24, 32, 0.22));
 }
 
 .box-viewer__nav {

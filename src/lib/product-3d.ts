@@ -24,11 +24,11 @@ const FILGO_PINTO_TOP = "/products/filgo-pinto-top.jpg";
 const FILGO_PINTO_BOTTOM = "/products/filgo-pinto-bottom.jpg";
 const FILGO_PINTO_TAB = "/products/filgo-pinto-tab.jpg";
 
-/** Caja Filgo Pinto: proporciones de pack colgante con volumen visible. */
+/** Caja Filgo Pinto: proporciones de pack colgante con volumen bien legible. */
 export const FILGO_PINTO_BOX: BoxSize = {
-  width: 176,
-  height: 440,
-  depth: 44,
+  width: 168,
+  height: 420,
+  depth: 56,
 };
 
 export function isFilgoPintoBox(product: Product) {
