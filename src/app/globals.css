@@ -540,8 +540,6 @@ dialog.panel::backdrop {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 240px;
-  height: 168px;
   margin: 0;
   transform-style: preserve-3d;
   transform-origin: center center;
@@ -588,17 +586,29 @@ dialog.panel::backdrop {
   box-sizing: border-box;
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
-  background-color: #ddd;
+  background-color: #e30613;
 }
 
 .product-box3d__face--front {
-  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
+  border-radius: 2px;
+  box-shadow:
+    0 0 0 1px rgba(0, 0, 0, 0.08),
+    0 18px 40px rgba(0, 0, 0, 0.14);
+}
+
+.product-box3d__face--back {
+  border-radius: 2px;
 }
 
 @media (max-width: 420px) {
-  .box-viewer__orbit,
-  .product-box3d {
-    scale: 0.82;
+  .box-viewer__orbit {
+    scale: 0.72;
+  }
+}
+
+@media (min-width: 421px) and (max-height: 820px) {
+  .box-viewer__orbit {
+    scale: 0.85;
   }
 }
 

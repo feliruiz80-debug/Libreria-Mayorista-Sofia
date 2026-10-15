@@ -8,18 +8,12 @@ import {
   type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from "react";
+import { boxForProduct, texturesForProduct } from "@/lib/product-3d";
 import type { Product } from "@/lib/types";
 
 const ANGLE_STEP = 40;
-const DEFAULT_YAW = -38;
-const DEFAULT_PITCH = -22;
-
-/** Caja de lápices: ancha, baja y con poco fondo (proporción tipo Filgo). */
-const BOX = {
-  width: 240,
-  height: 168,
-  depth: 52,
-} as const;
+const DEFAULT_YAW = -32;
+const DEFAULT_PITCH = -16;
 
 type Props = {
   product: Product;
@@ -38,7 +32,9 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
   const orbitRef = useRef<HTMLDivElement>(null);
   const [yaw, setYaw] = useState(DEFAULT_YAW);
   const [pitch, setPitch] = useState(DEFAULT_PITCH);
-  const imageUrl = product.imageUrl;
+
+  const textures = texturesForProduct(product);
+  const box = boxForProduct(product);
 
   useEffect(() => {
     const dialog = dialogRef.current;
@@ -109,7 +105,7 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
       const dx = ev.clientX - startX;
       const dy = ev.clientY - startY;
       yawRef.current = originYaw + dx * 0.45;
-      pitchRef.current = Math.max(-48, Math.min(18, originPitch - dy * 0.3));
+      pitchRef.current = Math.max(-42, Math.min(16, originPitch - dy * 0.28));
       setYaw(yawRef.current);
       setPitch(pitchRef.current);
 
@@ -132,7 +128,7 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
     window.addEventListener("pointercancel", onUp);
   }
 
-  if (!imageUrl) return null;
+  if (!textures) return null;
 
   return (
     <dialog
@@ -162,9 +158,18 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
         <div
           ref={orbitRef}
           className="box-viewer__orbit"
-          style={{ transform: `rotateX(${pitch}deg) rotateY(${yaw}deg)` }}
+          style={{
+            width: box.width,
+            height: box.height,
+            transform: `rotateX(${pitch}deg) rotateY(${yaw}deg)`,
+          }}
         >
-          <ProductBox3D imageUrl={imageUrl} />
+          <ProductBox3D
+            width={box.width}
+            height={box.height}
+            depth={box.depth}
+            textures={textures}
+          />
         </div>
 
         <button
@@ -203,105 +208,92 @@ function Chevron({ direction }: { direction: "left" | "right" }) {
   );
 }
 
-/** Caja 3D real: la foto del producto es el packaging en las 6 caras. */
-function ProductBox3D({ imageUrl }: { imageUrl: string }) {
-  const { width: w, height: h, depth: d } = BOX;
+type BoxProps = {
+  width: number;
+  height: number;
+  depth: number;
+  textures: {
+    front: string;
+    back: string;
+    left: string;
+    right: string;
+    top: string;
+    bottom: string;
+  };
+};
+
+/** Caja rectangular fina: foto real al frente, laterales de packaging. */
+function ProductBox3D({ width: w, height: h, depth: d, textures }: BoxProps) {
   const halfD = d / 2;
   const halfW = w / 2;
   const halfH = h / 2;
 
-  const face = (extra: CSSProperties = {}): CSSProperties => ({
-    backgroundImage: `url(${imageUrl})`,
+  const face = (url: string, extra: CSSProperties = {}): CSSProperties => ({
+    backgroundImage: `url(${url})`,
     backgroundRepeat: "no-repeat",
+    backgroundSize: "cover",
+    backgroundPosition: "center",
     ...extra,
   });
 
   return (
-    <div
-      className="product-box3d"
-      style={{ width: w, height: h }}
-      aria-hidden="true"
-    >
+    <div className="product-box3d" style={{ width: w, height: h }} aria-hidden="true">
       <div
         className="product-box3d__face product-box3d__face--front"
-        style={{
-          ...face({
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            width: w,
-            height: h,
-            transform: `translateZ(${halfD}px)`,
-          }),
-        }}
+        style={face(textures.front, {
+          width: w,
+          height: h,
+          transform: `translateZ(${halfD}px)`,
+        })}
       />
       <div
         className="product-box3d__face product-box3d__face--back"
-        style={{
-          ...face({
-            backgroundSize: "cover",
-            backgroundPosition: "center",
-            width: w,
-            height: h,
-            transform: `rotateY(180deg) translateZ(${halfD}px)`,
-            filter: "brightness(0.82)",
-          }),
-        }}
+        style={face(textures.back, {
+          width: w,
+          height: h,
+          transform: `rotateY(180deg) translateZ(${halfD}px)`,
+          filter: "brightness(0.78) saturate(0.92)",
+        })}
       />
       <div
         className="product-box3d__face product-box3d__face--right"
-        style={{
-          ...face({
-            backgroundSize: `${(w / d) * 100}% 100%`,
-            backgroundPosition: "100% 50%",
-            width: d,
-            height: h,
-            left: halfW - halfD,
-            transform: `rotateY(90deg) translateZ(${halfW}px)`,
-            filter: "brightness(0.88)",
-          }),
-        }}
+        style={face(textures.right, {
+          width: d,
+          height: h,
+          left: halfW - halfD,
+          transform: `rotateY(90deg) translateZ(${halfW}px)`,
+          filter: "brightness(0.9)",
+        })}
       />
       <div
         className="product-box3d__face product-box3d__face--left"
-        style={{
-          ...face({
-            backgroundSize: `${(w / d) * 100}% 100%`,
-            backgroundPosition: "0% 50%",
-            width: d,
-            height: h,
-            left: halfW - halfD,
-            transform: `rotateY(-90deg) translateZ(${halfW}px)`,
-            filter: "brightness(0.9)",
-          }),
-        }}
+        style={face(textures.left, {
+          width: d,
+          height: h,
+          left: halfW - halfD,
+          transform: `rotateY(-90deg) translateZ(${halfW}px)`,
+          filter: "brightness(0.92)",
+        })}
       />
       <div
         className="product-box3d__face product-box3d__face--top"
-        style={{
-          ...face({
-            backgroundSize: `100% ${(h / d) * 100}%`,
-            backgroundPosition: "50% 0%",
-            width: w,
-            height: d,
-            top: halfH - halfD,
-            transform: `rotateX(90deg) translateZ(${halfH}px)`,
-            filter: "brightness(1.05)",
-          }),
-        }}
+        style={face(textures.top, {
+          width: w,
+          height: d,
+          top: halfH - halfD,
+          transform: `rotateX(90deg) translateZ(${halfH}px)`,
+          filter: "brightness(1.04)",
+        })}
       />
       <div
         className="product-box3d__face product-box3d__face--bottom"
-        style={{
-          ...face({
-            backgroundSize: `100% ${(h / d) * 100}%`,
-            backgroundPosition: "50% 100%",
-            width: w,
-            height: d,
-            top: halfH - halfD,
-            transform: `rotateX(-90deg) translateZ(${halfH}px)`,
-            filter: "brightness(0.7)",
-          }),
-        }}
+        style={face(textures.bottom, {
+          width: w,
+          height: d,
+          top: halfH - halfD,
+          transform: `rotateX(-90deg) translateZ(${halfH}px)`,
+          filter: "brightness(0.68)",
+        })}
       />
     </div>
   );
