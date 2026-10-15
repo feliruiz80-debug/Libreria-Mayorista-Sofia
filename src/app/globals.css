@@ -459,7 +459,7 @@ dialog.panel::backdrop {
   transform: scale(0.94);
 }
 
-/* Foto del producto → caja 3D (sin fondo / sin ilustración). */
+/* Foto del producto → caja retail 3D realista (estilo foto de estudio). */
 .product-card__media {
   position: absolute;
   inset: 0;
@@ -497,13 +497,13 @@ dialog.panel::backdrop {
   padding: 0;
   border: none;
   border-radius: 0;
-  background: transparent;
+  background: #f3f4f6;
   color: #111;
   overflow: hidden;
 }
 
 .box-viewer::backdrop {
-  background: rgba(245, 246, 248, 0.92);
+  background: rgba(236, 238, 242, 0.96);
 }
 
 .box-viewer__close {
@@ -517,34 +517,62 @@ dialog.panel::backdrop {
   place-items: center;
   border: 0;
   border-radius: 999px;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.55);
   color: #111;
   font-size: 1.8rem;
   line-height: 1;
+  backdrop-filter: blur(6px);
 }
 
 .box-viewer__stage {
   position: absolute;
   inset: 0;
-  perspective: 1100px;
+  perspective: 1400px;
+  perspective-origin: 50% 46%;
   touch-action: none;
   cursor: grab;
-  background: transparent;
+  overflow: hidden;
 }
 
 .box-viewer__stage:active {
   cursor: grabbing;
 }
 
+.box-viewer__studio {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(ellipse 70% 42% at 50% 34%, rgba(255, 255, 255, 0.95), transparent 70%),
+    radial-gradient(ellipse 90% 55% at 50% 100%, #d7dbe3 0%, transparent 58%),
+    linear-gradient(180deg, #f7f8fa 0%, #eceff3 52%, #e2e6ec 100%);
+  pointer-events: none;
+}
+
+.box-viewer__shadow {
+  position: absolute;
+  left: 50%;
+  bottom: 11%;
+  width: min(14rem, 46vw);
+  height: 2.4rem;
+  border-radius: 50%;
+  background: radial-gradient(ellipse, rgba(20, 24, 32, 0.34), transparent 68%);
+  filter: blur(6px);
+  transform: translateX(-50%);
+  pointer-events: none;
+  z-index: 1;
+}
+
 .box-viewer__orbit {
   position: absolute;
   left: 50%;
-  top: 50%;
+  top: 47%;
+  z-index: 2;
   margin: 0;
   transform-style: preserve-3d;
   transform-origin: center center;
   will-change: transform;
   translate: -50% -50%;
+  filter: drop-shadow(0 28px 34px rgba(20, 24, 32, 0.18));
 }
 
 .box-viewer__nav {
@@ -573,6 +601,21 @@ dialog.panel::backdrop {
   right: max(0.4rem, env(safe-area-inset-right));
 }
 
+.box-viewer__hint {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: max(1.1rem, env(safe-area-inset-bottom));
+  z-index: 4;
+  margin: 0;
+  text-align: center;
+  font-size: 0.78rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  color: color-mix(in srgb, #111 48%, transparent);
+  pointer-events: none;
+}
+
 .product-box3d {
   position: relative;
   transform-style: preserve-3d;
@@ -587,28 +630,90 @@ dialog.panel::backdrop {
   backface-visibility: hidden;
   -webkit-backface-visibility: hidden;
   background-color: #e30613;
+  background-blend-mode: normal;
+  image-rendering: auto;
 }
 
 .product-box3d__face--front {
-  border-radius: 2px;
+  border-radius: 3px;
   box-shadow:
-    0 0 0 1px rgba(0, 0, 0, 0.08),
-    0 18px 40px rgba(0, 0, 0, 0.14);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.12),
+    inset -10px 0 18px rgba(0, 0, 0, 0.08),
+    inset 8px 0 14px rgba(255, 255, 255, 0.08),
+    0 0 0 1px rgba(0, 0, 0, 0.1);
+  overflow: hidden;
+}
+
+.product-box3d__gloss {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    118deg,
+    rgba(255, 255, 255, 0.22) 0%,
+    rgba(255, 255, 255, 0.05) 28%,
+    transparent 46%,
+    rgba(0, 0, 0, 0.05) 100%
+  );
+  pointer-events: none;
+  mix-blend-mode: soft-light;
 }
 
 .product-box3d__face--back {
-  border-radius: 2px;
+  border-radius: 3px;
+  filter: brightness(0.72) saturate(0.9);
+  box-shadow: inset 0 0 0 1px rgba(0, 0, 0, 0.18);
+}
+
+.product-box3d__face--right {
+  filter: brightness(0.86) saturate(0.95);
+  box-shadow:
+    inset 3px 0 10px rgba(0, 0, 0, 0.18),
+    inset -1px 0 0 rgba(255, 255, 255, 0.1);
+}
+
+.product-box3d__face--left {
+  filter: brightness(0.93) saturate(0.97);
+  box-shadow:
+    inset -3px 0 10px rgba(0, 0, 0, 0.12),
+    inset 1px 0 0 rgba(255, 255, 255, 0.12);
+}
+
+.product-box3d__face--top {
+  filter: brightness(1.05);
+  box-shadow: inset 0 -2px 6px rgba(0, 0, 0, 0.12);
+}
+
+.product-box3d__face--bottom {
+  filter: brightness(0.62);
+  box-shadow: inset 0 2px 8px rgba(0, 0, 0, 0.28);
+}
+
+.product-box3d__tab {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 4px 4px 0 0;
+  background-color: #e30613;
+  box-shadow:
+    inset 0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 1px 0 rgba(0, 0, 0, 0.12);
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
 }
 
 @media (max-width: 420px) {
   .box-viewer__orbit {
-    scale: 0.72;
+    scale: 0.68;
+  }
+
+  .box-viewer__shadow {
+    bottom: 13%;
+    width: min(11rem, 52vw);
   }
 }
 
 @media (min-width: 421px) and (max-height: 820px) {
   .box-viewer__orbit {
-    scale: 0.85;
+    scale: 0.82;
   }
 }
 
