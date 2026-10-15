@@ -1,37 +1,25 @@
 "use client";
 
-import Image from "next/image";
 import {
   useEffect,
   useId,
   useRef,
   useState,
+  type CSSProperties,
   type PointerEvent as ReactPointerEvent,
 } from "react";
 import type { Product } from "@/lib/types";
 
-const STUDIO_ANGLE_STEP = 36;
-const DEFAULT_TILT = -18;
+const ANGLE_STEP = 40;
+const DEFAULT_YAW = -38;
+const DEFAULT_PITCH = -22;
 
-const PENCIL_ROWS = [
-  ["#c62828", "#ef6c00", "#f9a825", "#fdd835", "#9e9d24", "#558b2f"],
-  ["#2e7d32", "#00897b", "#0277bd", "#1565c0", "#283593", "#6a1b9a"],
-  ["#ad1457", "#6d4c41", "#455a64", "#212121", "#ec407a", "#26a69a"],
-];
-
-function isFilgoColoredPencils(product: Product) {
-  const brand = product.brand.toLowerCase();
-  const name = product.name.toLowerCase();
-  const haystack = `${brand} ${name}`;
-  const isFilgo = brand.includes("filgo") || name.includes("filgo");
-  const isPencils =
-    haystack.includes("lápiz") ||
-    haystack.includes("lapiz") ||
-    haystack.includes("lápices") ||
-    haystack.includes("lapices") ||
-    (haystack.includes("color") && (haystack.includes("caja") || haystack.includes("set")));
-  return isFilgo && isPencils;
-}
+/** Caja de lápices: ancha, baja y con poco fondo (proporción tipo Filgo). */
+const BOX = {
+  width: 240,
+  height: 168,
+  depth: 52,
+} as const;
 
 type Props = {
   product: Product;
@@ -42,27 +30,25 @@ type Props = {
 export function ProductViewer3D({ product, open, onClose }: Props) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const yawRef = useRef(-32);
-  const pitchRef = useRef(DEFAULT_TILT);
+  const yawRef = useRef(DEFAULT_YAW);
+  const pitchRef = useRef(DEFAULT_PITCH);
   const velocityRef = useRef(0);
   const draggingRef = useRef(false);
   const rafRef = useRef(0);
   const orbitRef = useRef<HTMLDivElement>(null);
-  const shadowRef = useRef<HTMLDivElement>(null);
-  const [yaw, setYaw] = useState(-32);
-  const [pitch, setPitch] = useState(DEFAULT_TILT);
-  const filgo = isFilgoColoredPencils(product);
+  const [yaw, setYaw] = useState(DEFAULT_YAW);
+  const [pitch, setPitch] = useState(DEFAULT_PITCH);
   const imageUrl = product.imageUrl;
 
   useEffect(() => {
     const dialog = dialogRef.current;
     if (!dialog || !open) return;
     if (!dialog.open) dialog.showModal();
-    yawRef.current = -32;
-    pitchRef.current = DEFAULT_TILT;
+    yawRef.current = DEFAULT_YAW;
+    pitchRef.current = DEFAULT_PITCH;
     velocityRef.current = 0;
-    setYaw(-32);
-    setPitch(DEFAULT_TILT);
+    setYaw(DEFAULT_YAW);
+    setPitch(DEFAULT_PITCH);
   }, [open]);
 
   useEffect(() => {
@@ -80,7 +66,7 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
     const tick = () => {
       if (!draggingRef.current && Math.abs(velocityRef.current) > 0.02) {
         yawRef.current += velocityRef.current;
-        velocityRef.current *= 0.94;
+        velocityRef.current *= 0.93;
         setYaw(yawRef.current);
       } else if (!draggingRef.current) {
         velocityRef.current = 0;
@@ -89,11 +75,6 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
       if (orbitRef.current) {
         orbitRef.current.style.transform = `rotateX(${pitchRef.current}deg) rotateY(${yawRef.current}deg)`;
       }
-      if (shadowRef.current) {
-        const stretch = 1 + Math.abs(Math.sin((yawRef.current * Math.PI) / 180)) * 0.18;
-        const offsetX = Math.sin((yawRef.current * Math.PI) / 180) * 18;
-        shadowRef.current.style.transform = `translateX(${offsetX}px) scaleX(${stretch})`;
-      }
       rafRef.current = requestAnimationFrame(tick);
     };
 
@@ -101,13 +82,9 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
     return () => cancelAnimationFrame(rafRef.current);
   }, [open]);
 
-  function close() {
-    onClose();
-  }
-
   function nudge(direction: -1 | 1) {
     velocityRef.current = 0;
-    yawRef.current += direction * STUDIO_ANGLE_STEP;
+    yawRef.current += direction * ANGLE_STEP;
     setYaw(yawRef.current);
   }
 
@@ -131,13 +108,13 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
       const now = performance.now();
       const dx = ev.clientX - startX;
       const dy = ev.clientY - startY;
-      yawRef.current = originYaw + dx * 0.42;
-      pitchRef.current = Math.max(-38, Math.min(12, originPitch - dy * 0.28));
+      yawRef.current = originYaw + dx * 0.45;
+      pitchRef.current = Math.max(-48, Math.min(18, originPitch - dy * 0.3));
       setYaw(yawRef.current);
       setPitch(pitchRef.current);
 
       const dt = Math.max(16, now - lastT);
-      velocityRef.current = ((ev.clientX - lastX) / dt) * 14;
+      velocityRef.current = ((ev.clientX - lastX) / dt) * 16;
       lastX = ev.clientX;
       lastT = now;
     }
@@ -160,42 +137,39 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
   return (
     <dialog
       ref={dialogRef}
-      className="studio-viewer"
+      className="box-viewer"
       aria-labelledby={titleId}
-      onClose={close}
+      onClose={onClose}
       onCancel={(event) => {
         event.preventDefault();
-        close();
+        onClose();
       }}
     >
-      <button type="button" className="studio-viewer__close" onClick={close} aria-label="Cerrar">
-        <span aria-hidden="true">×</span>
+      <h2 id={titleId} className="sr-only">
+        {product.name}
+      </h2>
+
+      <button type="button" className="box-viewer__close" onClick={onClose} aria-label="Cerrar">
+        ×
       </button>
 
       <div
-        className="studio-viewer__stage"
+        className="box-viewer__stage"
         onPointerDown={onStagePointerDown}
         role="application"
-        aria-label="Visor 3D interactivo. Deslizá o usá las flechas para girar."
+        aria-label={`${product.name}. Deslizá para girar la caja en 3D.`}
       >
-        <div className="studio-viewer__glow" aria-hidden="true" />
-        <div ref={shadowRef} className="studio-viewer__shadow" aria-hidden="true" />
-
         <div
           ref={orbitRef}
-          className="studio-viewer__orbit"
+          className="box-viewer__orbit"
           style={{ transform: `rotateX(${pitch}deg) rotateY(${yaw}deg)` }}
         >
-          {filgo ? (
-            <FilgoStudioProduct imageUrl={imageUrl} />
-          ) : (
-            <StudioProductPlate imageUrl={imageUrl} name={product.name} />
-          )}
+          <ProductBox3D imageUrl={imageUrl} />
         </div>
 
         <button
           type="button"
-          className="studio-viewer__nav studio-viewer__nav--prev"
+          className="box-viewer__nav box-viewer__nav--prev"
           onClick={() => nudge(-1)}
           aria-label="Girar a la izquierda"
         >
@@ -203,33 +177,25 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
         </button>
         <button
           type="button"
-          className="studio-viewer__nav studio-viewer__nav--next"
+          className="box-viewer__nav box-viewer__nav--next"
           onClick={() => nudge(1)}
           aria-label="Girar a la derecha"
         >
           <Chevron direction="right" />
         </button>
       </div>
-
-      <footer className="studio-viewer__footer">
-        <p className="studio-viewer__brand">{product.brand || "Producto"}</p>
-        <h2 id={titleId} className="studio-viewer__title">
-          {product.name}
-        </h2>
-        <p className="studio-viewer__hint">Deslizá · girá en 360°</p>
-      </footer>
     </dialog>
   );
 }
 
 function Chevron({ direction }: { direction: "left" | "right" }) {
   return (
-    <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+    <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
       <path
         d={direction === "left" ? "M15 5 8 12l7 7" : "M9 5l7 7-7 7"}
         fill="none"
         stroke="currentColor"
-        strokeWidth="1.8"
+        strokeWidth="1.7"
         strokeLinecap="round"
         strokeLinejoin="round"
       />
@@ -237,62 +203,106 @@ function Chevron({ direction }: { direction: "left" | "right" }) {
   );
 }
 
-function StudioProductPlate({ imageUrl, name }: { imageUrl: string; name: string }) {
-  return (
-    <div className="studio-plate" aria-hidden="true">
-      <div className="studio-plate__face studio-plate__face--front">
-        <Image src={imageUrl} alt="" fill unoptimized sizes="80vw" className="object-contain p-5" />
-      </div>
-      <div className="studio-plate__face studio-plate__face--back" />
-      <div className="studio-plate__face studio-plate__face--left" />
-      <div className="studio-plate__face studio-plate__face--right" />
-      <div className="studio-plate__face studio-plate__face--top" />
-      <div className="studio-plate__face studio-plate__face--bottom" />
-      <span className="sr-only">{name}</span>
-    </div>
-  );
-}
+/** Caja 3D real: la foto del producto es el packaging en las 6 caras. */
+function ProductBox3D({ imageUrl }: { imageUrl: string }) {
+  const { width: w, height: h, depth: d } = BOX;
+  const halfD = d / 2;
+  const halfW = w / 2;
+  const halfH = h / 2;
 
-function FilgoStudioProduct({ imageUrl }: { imageUrl: string }) {
-  return (
-    <div className="filgo-studio" aria-hidden="true">
-      <div className="filgo-studio__tin">
-        <div className="filgo-studio__tin-body">
-          <div className="filgo-studio__tin-inner">
-            {PENCIL_ROWS.map((row, rowIndex) => (
-              <div key={rowIndex} className="filgo-studio__row" style={{ ["--row" as string]: rowIndex }}>
-                {row.map((color, i) => (
-                  <span
-                    key={`${color}-${i}`}
-                    className="filgo-studio__pencil"
-                    style={{
-                      ["--pencil" as string]: color,
-                      ["--i" as string]: i,
-                    }}
-                  />
-                ))}
-              </div>
-            ))}
-          </div>
-          <div className="filgo-studio__rim" />
-          <div className="filgo-studio__badge">
-            <Image src={imageUrl} alt="" width={120} height={120} unoptimized className="object-contain" />
-          </div>
-        </div>
-        <div className="filgo-studio__lid">
-          <div className="filgo-studio__lid-face">
-            <span>FILGO</span>
-            <small>Lápices de color</small>
-          </div>
-        </div>
-      </div>
+  const face = (extra: CSSProperties = {}): CSSProperties => ({
+    backgroundImage: `url(${imageUrl})`,
+    backgroundRepeat: "no-repeat",
+    ...extra,
+  });
 
-      <div className="filgo-studio__loose filgo-studio__loose--a">
-        <span className="filgo-studio__pencil is-loose" style={{ ["--pencil" as string]: "#c62828" }} />
-      </div>
-      <div className="filgo-studio__loose filgo-studio__loose--b">
-        <span className="filgo-studio__pencil is-loose" style={{ ["--pencil" as string]: "#1565c0" }} />
-      </div>
+  return (
+    <div
+      className="product-box3d"
+      style={{ width: w, height: h }}
+      aria-hidden="true"
+    >
+      <div
+        className="product-box3d__face product-box3d__face--front"
+        style={{
+          ...face({
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            width: w,
+            height: h,
+            transform: `translateZ(${halfD}px)`,
+          }),
+        }}
+      />
+      <div
+        className="product-box3d__face product-box3d__face--back"
+        style={{
+          ...face({
+            backgroundSize: "cover",
+            backgroundPosition: "center",
+            width: w,
+            height: h,
+            transform: `rotateY(180deg) translateZ(${halfD}px)`,
+            filter: "brightness(0.82)",
+          }),
+        }}
+      />
+      <div
+        className="product-box3d__face product-box3d__face--right"
+        style={{
+          ...face({
+            backgroundSize: `${(w / d) * 100}% 100%`,
+            backgroundPosition: "100% 50%",
+            width: d,
+            height: h,
+            left: halfW - halfD,
+            transform: `rotateY(90deg) translateZ(${halfW}px)`,
+            filter: "brightness(0.88)",
+          }),
+        }}
+      />
+      <div
+        className="product-box3d__face product-box3d__face--left"
+        style={{
+          ...face({
+            backgroundSize: `${(w / d) * 100}% 100%`,
+            backgroundPosition: "0% 50%",
+            width: d,
+            height: h,
+            left: halfW - halfD,
+            transform: `rotateY(-90deg) translateZ(${halfW}px)`,
+            filter: "brightness(0.9)",
+          }),
+        }}
+      />
+      <div
+        className="product-box3d__face product-box3d__face--top"
+        style={{
+          ...face({
+            backgroundSize: `100% ${(h / d) * 100}%`,
+            backgroundPosition: "50% 0%",
+            width: w,
+            height: d,
+            top: halfH - halfD,
+            transform: `rotateX(90deg) translateZ(${halfH}px)`,
+            filter: "brightness(1.05)",
+          }),
+        }}
+      />
+      <div
+        className="product-box3d__face product-box3d__face--bottom"
+        style={{
+          ...face({
+            backgroundSize: `100% ${(h / d) * 100}%`,
+            backgroundPosition: "50% 100%",
+            width: w,
+            height: d,
+            top: halfH - halfD,
+            transform: `rotateX(-90deg) translateZ(${halfH}px)`,
+            filter: "brightness(0.7)",
+          }),
+        }}
+      />
     </div>
   );
 }

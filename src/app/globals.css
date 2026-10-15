@@ -459,7 +459,7 @@ dialog.panel::backdrop {
   transform: scale(0.94);
 }
 
-/* Abrir foto → studio 3D pro. */
+/* Foto del producto → caja 3D (sin fondo / sin ilustración). */
 .product-card__media {
   position: absolute;
   inset: 0;
@@ -488,7 +488,7 @@ dialog.panel::backdrop {
   pointer-events: none;
 }
 
-.studio-viewer {
+.box-viewer {
   width: 100vw;
   max-width: 100vw;
   height: 100dvh;
@@ -497,16 +497,16 @@ dialog.panel::backdrop {
   padding: 0;
   border: none;
   border-radius: 0;
-  background: #f7f7f8;
+  background: transparent;
   color: #111;
   overflow: hidden;
 }
 
-.studio-viewer::backdrop {
-  background: rgba(10, 12, 16, 0.55);
+.box-viewer::backdrop {
+  background: rgba(245, 246, 248, 0.92);
 }
 
-.studio-viewer__close {
+.box-viewer__close {
   position: absolute;
   z-index: 5;
   top: max(0.85rem, env(safe-area-inset-top));
@@ -517,58 +517,31 @@ dialog.panel::backdrop {
   place-items: center;
   border: 0;
   border-radius: 999px;
-  background: rgba(255, 255, 255, 0.88);
-  box-shadow: 0 8px 24px rgba(17, 17, 17, 0.08);
+  background: transparent;
   color: #111;
-  font-size: 1.7rem;
+  font-size: 1.8rem;
   line-height: 1;
 }
 
-.studio-viewer__stage {
+.box-viewer__stage {
   position: absolute;
   inset: 0;
-  perspective: 1200px;
+  perspective: 1100px;
   touch-action: none;
   cursor: grab;
-  background:
-    radial-gradient(ellipse 70% 45% at 50% 38%, #ffffff 0%, #f4f5f7 55%, #eceef2 100%);
+  background: transparent;
 }
 
-.studio-viewer__stage:active {
+.box-viewer__stage:active {
   cursor: grabbing;
 }
 
-.studio-viewer__glow {
-  position: absolute;
-  left: 18%;
-  right: 18%;
-  top: 12%;
-  height: 42%;
-  border-radius: 50%;
-  background: radial-gradient(ellipse, rgba(255, 255, 255, 0.95), transparent 70%);
-  pointer-events: none;
-}
-
-.studio-viewer__shadow {
-  position: absolute;
-  left: 22%;
-  right: 22%;
-  bottom: 19%;
-  height: 12%;
-  border-radius: 50%;
-  background: radial-gradient(ellipse, rgba(20, 24, 32, 0.22) 0%, rgba(20, 24, 32, 0.08) 42%, transparent 72%);
-  filter: blur(6px);
-  transform-origin: center;
-  pointer-events: none;
-  transition: transform 80ms linear;
-}
-
-.studio-viewer__orbit {
+.box-viewer__orbit {
   position: absolute;
   left: 50%;
-  top: 46%;
-  width: min(78vw, 22rem);
-  height: min(78vw, 22rem);
+  top: 50%;
+  width: 240px;
+  height: 168px;
   margin: 0;
   transform-style: preserve-3d;
   transform-origin: center center;
@@ -576,329 +549,57 @@ dialog.panel::backdrop {
   translate: -50% -50%;
 }
 
-.studio-viewer__nav {
+.box-viewer__nav {
   position: absolute;
-  top: 46%;
+  top: 50%;
   z-index: 4;
   display: grid;
   width: 3rem;
   height: 3rem;
   place-items: center;
   border: 0;
-  border-radius: 999px;
   background: transparent;
   color: #111;
   translate: 0 -50%;
-  transition: transform 200ms var(--ease), opacity 200ms var(--ease);
 }
 
-.studio-viewer__nav:active {
-  transform: scale(0.92);
+.box-viewer__nav:active {
+  opacity: 0.55;
 }
 
-.studio-viewer__nav--prev {
-  left: max(0.35rem, env(safe-area-inset-left));
+.box-viewer__nav--prev {
+  left: max(0.4rem, env(safe-area-inset-left));
 }
 
-.studio-viewer__nav--next {
-  right: max(0.35rem, env(safe-area-inset-right));
+.box-viewer__nav--next {
+  right: max(0.4rem, env(safe-area-inset-right));
 }
 
-.studio-viewer__footer {
-  position: absolute;
-  z-index: 4;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  padding: 1rem 1.25rem calc(1.15rem + env(safe-area-inset-bottom));
-  text-align: center;
-  background: linear-gradient(180deg, transparent, rgba(247, 247, 248, 0.92) 35%, #f7f7f8);
-  pointer-events: none;
-}
-
-.studio-viewer__brand {
-  margin: 0;
-  font-size: 0.7rem;
-  font-weight: 700;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  color: #6b7280;
-}
-
-.studio-viewer__title {
-  margin: 0.2rem 0 0;
-  font-size: 1.05rem;
-  font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.25;
-}
-
-.studio-viewer__hint {
-  margin: 0.35rem 0 0;
-  font-size: 0.72rem;
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: #9ca3af;
-}
-
-/* Placa 3D genérica (foto del producto con volumen). */
-.studio-plate {
-  position: absolute;
-  inset: 8% 12%;
-  transform-style: preserve-3d;
-}
-
-.studio-plate__face {
-  position: absolute;
-  backface-visibility: hidden;
-}
-
-.studio-plate__face--front,
-.studio-plate__face--back {
-  inset: 0;
-  border-radius: 1.35rem;
-  background: #fff;
-  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.8);
-}
-
-.studio-plate__face--front {
-  transform: translateZ(14px);
-  overflow: hidden;
-  border: 1px solid rgba(17, 17, 17, 0.06);
-}
-
-.studio-plate__face--back {
-  transform: rotateY(180deg) translateZ(14px);
-  background:
-    linear-gradient(145deg, #f3f4f6, #e5e7eb);
-}
-
-.studio-plate__face--left,
-.studio-plate__face--right {
-  top: 0;
-  bottom: 0;
-  width: 28px;
-  background: linear-gradient(180deg, #e5e7eb, #cbd5e1);
-}
-
-.studio-plate__face--left {
-  left: 0;
-  transform-origin: left center;
-  transform: rotateY(-90deg) translateZ(0);
-}
-
-.studio-plate__face--right {
-  right: 0;
-  transform-origin: right center;
-  transform: rotateY(90deg) translateZ(0);
-}
-
-.studio-plate__face--top,
-.studio-plate__face--bottom {
-  left: 0;
-  right: 0;
-  height: 28px;
-  background: linear-gradient(90deg, #e2e8f0, #f8fafc, #dbe3ee);
-}
-
-.studio-plate__face--top {
-  top: 0;
-  transform-origin: top center;
-  transform: rotateX(90deg) translateZ(0);
-}
-
-.studio-plate__face--bottom {
-  bottom: 0;
-  transform-origin: bottom center;
-  transform: rotateX(-90deg) translateZ(0);
-}
-
-/* Filgo: lata abierta + lápices (composición tipo product shot). */
-.filgo-studio {
-  position: absolute;
-  inset: 0;
-  transform-style: preserve-3d;
-}
-
-.filgo-studio__tin {
-  position: absolute;
-  left: 50%;
-  top: 52%;
-  width: 11.5rem;
-  height: 7.6rem;
-  transform-style: preserve-3d;
-  transform: translate3d(-58%, -55%, 0) rotateX(8deg) rotateY(-8deg);
-}
-
-.filgo-studio__tin-body {
-  position: absolute;
-  inset: 0;
-  border-radius: 0.85rem;
-  background:
-    linear-gradient(160deg, #2a2d33 0%, #17191d 45%, #0f1114 100%);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.18),
-    inset 0 -10px 18px rgba(0, 0, 0, 0.35),
-    0 18px 28px rgba(0, 0, 0, 0.18);
-  transform: translateZ(0);
-  overflow: hidden;
-}
-
-.filgo-studio__rim {
-  position: absolute;
-  inset: 0;
-  border-radius: 0.85rem;
-  border: 1px solid rgba(255, 255, 255, 0.16);
-  box-shadow: inset 0 0 0 2px rgba(120, 130, 145, 0.35);
-  pointer-events: none;
-}
-
-.filgo-studio__tin-inner {
-  position: absolute;
-  inset: 0.55rem 0.55rem 0.7rem;
-  border-radius: 0.55rem;
-  background:
-    linear-gradient(180deg, #3a3f48 0%, #23272e 100%);
-  box-shadow: inset 0 8px 16px rgba(0, 0, 0, 0.35);
-  display: grid;
-  gap: 0.28rem;
-  padding: 0.45rem 0.4rem;
-  transform: translateZ(8px);
-}
-
-.filgo-studio__row {
-  display: grid;
-  grid-template-columns: repeat(6, 1fr);
-  gap: 0.18rem;
-  transform: translateZ(calc(4px + var(--row) * 2px));
-}
-
-.filgo-studio__pencil {
+.product-box3d {
   position: relative;
-  display: block;
-  width: 100%;
-  aspect-ratio: 1 / 4.1;
-  border-radius: 0.28rem 0.28rem 0.16rem 0.16rem;
-  background:
-    linear-gradient(
-      180deg,
-      #f3e0b8 0 11%,
-      var(--pencil) 11% 76%,
-      #c9a46a 76% 86%,
-      #5a4332 86% 100%
-    );
-  box-shadow:
-    inset -1.5px 0 0 rgba(0, 0, 0, 0.18),
-    inset 1.5px 0 0 rgba(255, 255, 255, 0.2),
-    0 3px 6px rgba(0, 0, 0, 0.22);
-  transform: translateZ(2px);
+  transform-style: preserve-3d;
+  margin: 0 auto;
 }
 
-.filgo-studio__pencil::before {
-  content: "";
+.product-box3d__face {
   position: absolute;
-  left: 50%;
-  top: -0.42rem;
-  width: 0;
-  height: 0;
-  border-left: 0.28rem solid transparent;
-  border-right: 0.28rem solid transparent;
-  border-bottom: 0.5rem solid var(--pencil);
-  transform: translateX(-50%);
-  filter: brightness(1.05);
-}
-
-.filgo-studio__pencil::after {
-  content: "";
-  position: absolute;
-  inset: 18% 28% 28%;
-  border-radius: 999px;
-  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.28), transparent);
-}
-
-.filgo-studio__badge {
-  position: absolute;
-  right: 0.45rem;
-  bottom: 0.4rem;
-  width: 2.6rem;
-  height: 2.6rem;
-  border-radius: 0.45rem;
-  background: rgba(255, 255, 255, 0.92);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
-  overflow: hidden;
-  transform: translateZ(18px);
-  display: grid;
-  place-items: center;
-  padding: 0.15rem;
-}
-
-.filgo-studio__lid {
-  position: absolute;
-  left: 0;
-  right: 0;
   top: 0;
-  height: 7.6rem;
-  transform-origin: top center;
-  transform: translateZ(2px) rotateX(-112deg);
-  transform-style: preserve-3d;
+  left: 0;
+  box-sizing: border-box;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  background-color: #ddd;
 }
 
-.filgo-studio__lid-face {
-  position: absolute;
-  inset: 0;
-  border-radius: 0.85rem;
-  background:
-    linear-gradient(165deg, #30343c 0%, #15171b 60%, #0c0d10 100%);
-  border: 1px solid rgba(255, 255, 255, 0.14);
-  box-shadow:
-    inset 0 1px 0 rgba(255, 255, 255, 0.16),
-    0 10px 20px rgba(0, 0, 0, 0.2);
-  display: grid;
-  place-content: center;
-  gap: 0.15rem;
-  text-align: center;
-  color: #f8fafc;
+.product-box3d__face--front {
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.06);
 }
 
-.filgo-studio__lid-face span {
-  font-size: 0.95rem;
-  font-weight: 800;
-  letter-spacing: 0.22em;
-}
-
-.filgo-studio__lid-face small {
-  font-size: 0.58rem;
-  letter-spacing: 0.12em;
-  text-transform: uppercase;
-  color: rgba(248, 250, 252, 0.72);
-}
-
-.filgo-studio__loose {
-  position: absolute;
-  transform-style: preserve-3d;
-}
-
-.filgo-studio__loose--a {
-  left: 68%;
-  top: 58%;
-  width: 1.15rem;
-  transform: translateZ(20px) rotateZ(58deg) rotateX(8deg);
-}
-
-.filgo-studio__loose--b {
-  left: 74%;
-  top: 64%;
-  width: 1.05rem;
-  transform: translateZ(10px) rotateZ(38deg) rotateX(4deg);
-}
-
-.filgo-studio__pencil.is-loose {
-  width: 100%;
-  aspect-ratio: 1 / 5.2;
-  box-shadow:
-    inset -1.5px 0 0 rgba(0, 0, 0, 0.18),
-    inset 1.5px 0 0 rgba(255, 255, 255, 0.2),
-    0 10px 16px rgba(0, 0, 0, 0.18);
+@media (max-width: 420px) {
+  .box-viewer__orbit,
+  .product-box3d {
+    scale: 0.82;
+  }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -911,9 +612,7 @@ dialog.panel::backdrop {
   .dock-link,
   .app-in,
   .float-chip,
-  .qty button,
-  .studio-viewer__nav,
-  .studio-viewer__shadow {
+  .qty button {
     transition: none;
     animation: none;
   }

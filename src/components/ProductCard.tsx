@@ -26,7 +26,7 @@ export function ProductCard({ product }: { product: Product }) {
 
   return (
     <article className="panel flex h-full flex-col overflow-hidden">
-      <div className="relative aspect-square bg-[var(--color-bg)]">
+      <div className="relative aspect-square bg-transparent">
         {product.imageUrl ? (
           <button
             type="button"
