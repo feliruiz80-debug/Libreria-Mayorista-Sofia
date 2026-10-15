@@ -10,19 +10,13 @@ import {
 } from "react";
 import type { Product } from "@/lib/types";
 
-const PENCIL_COLORS = [
-  "#e92026",
-  "#f59e0b",
-  "#facc15",
-  "#22c55e",
-  "#0ea5e9",
-  "#014d9b",
-  "#7c3aed",
-  "#ec4899",
-  "#78716c",
-  "#111827",
-  "#fb7185",
-  "#34d399",
+const STUDIO_ANGLE_STEP = 36;
+const DEFAULT_TILT = -18;
+
+const PENCIL_ROWS = [
+  ["#c62828", "#ef6c00", "#f9a825", "#fdd835", "#9e9d24", "#558b2f"],
+  ["#2e7d32", "#00897b", "#0277bd", "#1565c0", "#283593", "#6a1b9a"],
+  ["#ad1457", "#6d4c41", "#455a64", "#212121", "#ec407a", "#26a69a"],
 ];
 
 function isFilgoColoredPencils(product: Product) {
@@ -48,9 +42,15 @@ type Props = {
 export function ProductViewer3D({ product, open, onClose }: Props) {
   const titleId = useId();
   const dialogRef = useRef<HTMLDialogElement>(null);
-  const stageRef = useRef<HTMLDivElement>(null);
-  const [panel, setPanel] = useState(0);
-  const [rotation, setRotation] = useState({ x: -12, y: -28 });
+  const yawRef = useRef(-32);
+  const pitchRef = useRef(DEFAULT_TILT);
+  const velocityRef = useRef(0);
+  const draggingRef = useRef(false);
+  const rafRef = useRef(0);
+  const orbitRef = useRef<HTMLDivElement>(null);
+  const shadowRef = useRef<HTMLDivElement>(null);
+  const [yaw, setYaw] = useState(-32);
+  const [pitch, setPitch] = useState(DEFAULT_TILT);
   const filgo = isFilgoColoredPencils(product);
   const imageUrl = product.imageUrl;
 
@@ -58,8 +58,11 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
     const dialog = dialogRef.current;
     if (!dialog || !open) return;
     if (!dialog.open) dialog.showModal();
-    setPanel(0);
-    setRotation({ x: -12, y: -28 });
+    yawRef.current = -32;
+    pitchRef.current = DEFAULT_TILT;
+    velocityRef.current = 0;
+    setYaw(-32);
+    setPitch(DEFAULT_TILT);
   }, [open]);
 
   useEffect(() => {
@@ -71,62 +74,80 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
     };
   }, [open]);
 
+  useEffect(() => {
+    if (!open) return;
+
+    const tick = () => {
+      if (!draggingRef.current && Math.abs(velocityRef.current) > 0.02) {
+        yawRef.current += velocityRef.current;
+        velocityRef.current *= 0.94;
+        setYaw(yawRef.current);
+      } else if (!draggingRef.current) {
+        velocityRef.current = 0;
+      }
+
+      if (orbitRef.current) {
+        orbitRef.current.style.transform = `rotateX(${pitchRef.current}deg) rotateY(${yawRef.current}deg)`;
+      }
+      if (shadowRef.current) {
+        const stretch = 1 + Math.abs(Math.sin((yawRef.current * Math.PI) / 180)) * 0.18;
+        const offsetX = Math.sin((yawRef.current * Math.PI) / 180) * 18;
+        shadowRef.current.style.transform = `translateX(${offsetX}px) scaleX(${stretch})`;
+      }
+      rafRef.current = requestAnimationFrame(tick);
+    };
+
+    rafRef.current = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(rafRef.current);
+  }, [open]);
+
   function close() {
     onClose();
   }
 
-  function onStagePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
-    if (event.pointerType === "mouse" && event.button !== 0) return;
-    const target = event.currentTarget;
-    target.setPointerCapture(event.pointerId);
-    const startX = event.clientX;
-    const startY = event.clientY;
-    const origin = { ...rotation };
-    let moved = false;
-
-    function onMove(ev: PointerEvent) {
-      const dx = ev.clientX - startX;
-      const dy = ev.clientY - startY;
-      if (Math.abs(dx) + Math.abs(dy) > 4) moved = true;
-      setRotation({
-        x: Math.max(-42, Math.min(28, origin.x - dy * 0.35)),
-        y: origin.y + dx * 0.45,
-      });
-    }
-
-    function onUp(ev: PointerEvent) {
-      target.releasePointerCapture(ev.pointerId);
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onUp);
-      if (!moved && Math.abs(ev.clientX - startX) < 4) {
-        /* keep tap from accidental close */
-      }
-    }
-
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onUp);
+  function nudge(direction: -1 | 1) {
+    velocityRef.current = 0;
+    yawRef.current += direction * STUDIO_ANGLE_STEP;
+    setYaw(yawRef.current);
   }
 
-  function onCarouselPointerDown(event: ReactPointerEvent<HTMLDivElement>) {
+  function onStagePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
     if (event.pointerType === "mouse" && event.button !== 0) return;
-    if ((event.target as HTMLElement).closest("[data-viewer-stage]")) return;
+    if ((event.target as HTMLElement).closest("button")) return;
+
+    const target = event.currentTarget;
+    target.setPointerCapture(event.pointerId);
+    draggingRef.current = true;
+    velocityRef.current = 0;
+
     const startX = event.clientX;
-    const startPanel = panel;
-    let dx = 0;
+    const startY = event.clientY;
+    const originYaw = yawRef.current;
+    const originPitch = pitchRef.current;
+    let lastX = startX;
+    let lastT = performance.now();
 
     function onMove(ev: PointerEvent) {
-      dx = ev.clientX - startX;
+      const now = performance.now();
+      const dx = ev.clientX - startX;
+      const dy = ev.clientY - startY;
+      yawRef.current = originYaw + dx * 0.42;
+      pitchRef.current = Math.max(-38, Math.min(12, originPitch - dy * 0.28));
+      setYaw(yawRef.current);
+      setPitch(pitchRef.current);
+
+      const dt = Math.max(16, now - lastT);
+      velocityRef.current = ((ev.clientX - lastX) / dt) * 14;
+      lastX = ev.clientX;
+      lastT = now;
     }
 
     function onUp() {
+      draggingRef.current = false;
+      target.releasePointerCapture(event.pointerId);
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
-      if (dx < -56) setPanel(1);
-      else if (dx > 56) setPanel(0);
-      else setPanel(startPanel);
     }
 
     window.addEventListener("pointermove", onMove);
@@ -139,7 +160,7 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
   return (
     <dialog
       ref={dialogRef}
-      className="product-viewer"
+      className="studio-viewer"
       aria-labelledby={titleId}
       onClose={close}
       onCancel={(event) => {
@@ -147,112 +168,131 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
         close();
       }}
     >
-      <div className="product-viewer__chrome">
-        <button type="button" className="product-viewer__close" onClick={close} aria-label="Cerrar">
-          ×
-        </button>
-        <div className="min-w-0 flex-1">
-          <p className="kicker">{product.brand || "Producto"}</p>
-          <h2 id={titleId} className="truncate text-lg font-semibold leading-tight">
-            {product.name}
-          </h2>
-        </div>
-      </div>
+      <button type="button" className="studio-viewer__close" onClick={close} aria-label="Cerrar">
+        <span aria-hidden="true">×</span>
+      </button>
 
       <div
-        className="product-viewer__track"
-        style={{ transform: `translateX(-${panel * 100}%)` }}
-        onPointerDown={onCarouselPointerDown}
+        className="studio-viewer__stage"
+        onPointerDown={onStagePointerDown}
+        role="application"
+        aria-label="Visor 3D interactivo. Deslizá o usá las flechas para girar."
       >
-        <section className="product-viewer__panel" aria-label="Foto del producto">
-          <div className="product-viewer__photo">
-            <Image
-              src={imageUrl}
-              alt={`Foto de ${product.name}`}
-              fill
-              unoptimized
-              sizes="100vw"
-              className="object-contain p-6"
-              priority
-            />
-          </div>
-          <p className="product-viewer__hint">Deslizá al costado para la vista 3D</p>
-        </section>
+        <div className="studio-viewer__glow" aria-hidden="true" />
+        <div ref={shadowRef} className="studio-viewer__shadow" aria-hidden="true" />
 
-        <section className="product-viewer__panel" aria-label="Vista 3D interactiva">
-          <div
-            ref={stageRef}
-            data-viewer-stage
-            className="product-viewer__stage"
-            onPointerDown={onStagePointerDown}
-            role="application"
-            aria-label="Visor 3D del producto. Arrastrá para girar."
-          >
-            <div className="product-viewer__floor" aria-hidden="true" />
-            <div
-              className="product-viewer__orbit"
-              style={{
-                transform: `rotateX(${rotation.x}deg) rotateY(${rotation.y}deg)`,
-              }}
-            >
-              {filgo ? <FilgoPencilPack imageUrl={imageUrl} name={product.name} /> : (
-                <div className="product-viewer__card">
-                  <Image
-                    src={imageUrl}
-                    alt=""
-                    fill
-                    unoptimized
-                    sizes="80vw"
-                    className="object-contain p-4"
-                  />
-                </div>
-              )}
-            </div>
-          </div>
-          <p className="product-viewer__hint">Arrastrá o deslizá para girar el producto</p>
-        </section>
-      </div>
+        <div
+          ref={orbitRef}
+          className="studio-viewer__orbit"
+          style={{ transform: `rotateX(${pitch}deg) rotateY(${yaw}deg)` }}
+        >
+          {filgo ? (
+            <FilgoStudioProduct imageUrl={imageUrl} />
+          ) : (
+            <StudioProductPlate imageUrl={imageUrl} name={product.name} />
+          )}
+        </div>
 
-      <div className="product-viewer__dots" aria-hidden="true">
-        <span className={panel === 0 ? "is-active" : undefined} />
-        <span className={panel === 1 ? "is-active" : undefined} />
-      </div>
-      <div className="product-viewer__tabs">
-        <button type="button" className={panel === 0 ? "is-active" : undefined} onClick={() => setPanel(0)}>
-          Foto
+        <button
+          type="button"
+          className="studio-viewer__nav studio-viewer__nav--prev"
+          onClick={() => nudge(-1)}
+          aria-label="Girar a la izquierda"
+        >
+          <Chevron direction="left" />
         </button>
-        <button type="button" className={panel === 1 ? "is-active" : undefined} onClick={() => setPanel(1)}>
-          Vista 3D
+        <button
+          type="button"
+          className="studio-viewer__nav studio-viewer__nav--next"
+          onClick={() => nudge(1)}
+          aria-label="Girar a la derecha"
+        >
+          <Chevron direction="right" />
         </button>
       </div>
+
+      <footer className="studio-viewer__footer">
+        <p className="studio-viewer__brand">{product.brand || "Producto"}</p>
+        <h2 id={titleId} className="studio-viewer__title">
+          {product.name}
+        </h2>
+        <p className="studio-viewer__hint">Deslizá · girá en 360°</p>
+      </footer>
     </dialog>
   );
 }
 
-function FilgoPencilPack({ imageUrl, name }: { imageUrl: string; name: string }) {
+function Chevron({ direction }: { direction: "left" | "right" }) {
   return (
-    <div className="filgo-pack" aria-hidden="true">
-      <div className="filgo-pack__box">
-        <Image src={imageUrl} alt="" fill unoptimized sizes="60vw" className="object-contain p-3" />
+    <svg viewBox="0 0 24 24" width="28" height="28" aria-hidden="true">
+      <path
+        d={direction === "left" ? "M15 5 8 12l7 7" : "M9 5l7 7-7 7"}
+        fill="none"
+        stroke="currentColor"
+        strokeWidth="1.8"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+function StudioProductPlate({ imageUrl, name }: { imageUrl: string; name: string }) {
+  return (
+    <div className="studio-plate" aria-hidden="true">
+      <div className="studio-plate__face studio-plate__face--front">
+        <Image src={imageUrl} alt="" fill unoptimized sizes="80vw" className="object-contain p-5" />
       </div>
-      <div className="filgo-pack__fan">
-        {PENCIL_COLORS.map((color, index) => {
-          const mid = (PENCIL_COLORS.length - 1) / 2;
-          const offset = index - mid;
-          return (
-            <span
-              key={color}
-              className="filgo-pencil"
-              style={{
-                ["--pencil" as string]: color,
-                transform: `translate(-50%, -50%) rotateZ(${offset * 7.2}deg) translateY(${Math.abs(offset) * 2}px) rotateX(8deg)`,
-                zIndex: Math.round(20 - Math.abs(offset)),
-              }}
-            />
-          );
-        })}
+      <div className="studio-plate__face studio-plate__face--back" />
+      <div className="studio-plate__face studio-plate__face--left" />
+      <div className="studio-plate__face studio-plate__face--right" />
+      <div className="studio-plate__face studio-plate__face--top" />
+      <div className="studio-plate__face studio-plate__face--bottom" />
+      <span className="sr-only">{name}</span>
+    </div>
+  );
+}
+
+function FilgoStudioProduct({ imageUrl }: { imageUrl: string }) {
+  return (
+    <div className="filgo-studio" aria-hidden="true">
+      <div className="filgo-studio__tin">
+        <div className="filgo-studio__tin-body">
+          <div className="filgo-studio__tin-inner">
+            {PENCIL_ROWS.map((row, rowIndex) => (
+              <div key={rowIndex} className="filgo-studio__row" style={{ ["--row" as string]: rowIndex }}>
+                {row.map((color, i) => (
+                  <span
+                    key={`${color}-${i}`}
+                    className="filgo-studio__pencil"
+                    style={{
+                      ["--pencil" as string]: color,
+                      ["--i" as string]: i,
+                    }}
+                  />
+                ))}
+              </div>
+            ))}
+          </div>
+          <div className="filgo-studio__rim" />
+          <div className="filgo-studio__badge">
+            <Image src={imageUrl} alt="" width={120} height={120} unoptimized className="object-contain" />
+          </div>
+        </div>
+        <div className="filgo-studio__lid">
+          <div className="filgo-studio__lid-face">
+            <span>FILGO</span>
+            <small>Lápices de color</small>
+          </div>
+        </div>
       </div>
-      <p className="filgo-pack__label">Filgo · {name.includes("color") ? "Lápices de color" : "Pack"}</p>
+
+      <div className="filgo-studio__loose filgo-studio__loose--a">
+        <span className="filgo-studio__pencil is-loose" style={{ ["--pencil" as string]: "#c62828" }} />
+      </div>
+      <div className="filgo-studio__loose filgo-studio__loose--b">
+        <span className="filgo-studio__pencil is-loose" style={{ ["--pencil" as string]: "#1565c0" }} />
+      </div>
     </div>
   );
 }

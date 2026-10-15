@@ -43,7 +43,7 @@ export function ProductCard({ product }: { product: Product }) {
               className="object-contain p-3"
             />
             <span className="product-card__media-hint" aria-hidden="true">
-              Tocar
+              3D
             </span>
           </button>
         ) : (
