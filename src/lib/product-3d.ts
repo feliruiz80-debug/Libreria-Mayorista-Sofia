@@ -20,14 +20,15 @@ const FILGO_PINTO_FRONT = "/products/filgo-pinto-front.jpg";
 const FILGO_PINTO_BACK = "/products/filgo-pinto-back.jpg";
 const FILGO_PINTO_SIDE_LEFT = "/products/filgo-pinto-side-left.jpg";
 const FILGO_PINTO_SIDE_RIGHT = "/products/filgo-pinto-side-right.jpg";
-const FILGO_PINTO_EDGE = "/products/filgo-pinto-edge.jpg";
+const FILGO_PINTO_TOP = "/products/filgo-pinto-top.jpg";
+const FILGO_PINTO_BOTTOM = "/products/filgo-pinto-bottom.jpg";
 const FILGO_PINTO_TAB = "/products/filgo-pinto-tab.jpg";
 
-/** Caja Filgo Pinto real: alta, angosta y fina (pack colgante). */
+/** Caja Filgo Pinto: proporciones de pack colgante con volumen bien legible. */
 export const FILGO_PINTO_BOX: BoxSize = {
-  width: 180,
-  height: 454,
-  depth: 28,
+  width: 168,
+  height: 420,
+  depth: 56,
 };
 
 export function isFilgoPintoBox(product: Product) {
@@ -47,7 +48,7 @@ export function isFilgoPintoBox(product: Product) {
 
 export function boxForProduct(product: Product): BoxSize {
   if (isFilgoPintoBox(product)) return FILGO_PINTO_BOX;
-  return { width: 200, height: 260, depth: 28 };
+  return { width: 200, height: 260, depth: 36 };
 }
 
 export function texturesForProduct(product: Product): ProductBoxTextures | null {
@@ -59,8 +60,8 @@ export function texturesForProduct(product: Product): ProductBoxTextures | null 
       back: FILGO_PINTO_BACK,
       left: FILGO_PINTO_SIDE_LEFT,
       right: FILGO_PINTO_SIDE_RIGHT,
-      top: FILGO_PINTO_EDGE,
-      bottom: FILGO_PINTO_EDGE,
+      top: FILGO_PINTO_TOP,
+      bottom: FILGO_PINTO_BOTTOM,
       tab: FILGO_PINTO_TAB,
     };
   }

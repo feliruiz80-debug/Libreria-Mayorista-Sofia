@@ -11,9 +11,10 @@ import {
 import { boxForProduct, texturesForProduct, type ProductBoxTextures } from "@/lib/product-3d";
 import type { Product } from "@/lib/types";
 
-const ANGLE_STEP = 42;
-const DEFAULT_YAW = -28;
-const DEFAULT_PITCH = -8;
+const ANGLE_STEP = 45;
+/** Vista 3/4: se ve frente, lateral y tapa — no una foto plana. */
+const DEFAULT_YAW = -38;
+const DEFAULT_PITCH = -18;
 
 type Props = {
   product: Product;
@@ -26,9 +27,7 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
   const dialogRef = useRef<HTMLDialogElement>(null);
   const yawRef = useRef(DEFAULT_YAW);
   const pitchRef = useRef(DEFAULT_PITCH);
-  const velocityRef = useRef(0);
   const draggingRef = useRef(false);
-  const rafRef = useRef(0);
   const orbitRef = useRef<HTMLDivElement>(null);
   const shadowRef = useRef<HTMLDivElement>(null);
   const [yaw, setYaw] = useState(DEFAULT_YAW);
@@ -43,7 +42,6 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
     if (!dialog.open) dialog.showModal();
     yawRef.current = DEFAULT_YAW;
     pitchRef.current = DEFAULT_PITCH;
-    velocityRef.current = 0;
     setYaw(DEFAULT_YAW);
     setPitch(DEFAULT_PITCH);
   }, [open]);
@@ -58,37 +56,27 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
   }, [open]);
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !orbitRef.current) return;
+    orbitRef.current.style.transform = `rotateX(${pitch}deg) rotateY(${yaw}deg)`;
+    if (shadowRef.current) {
+      const stretch = 1 + Math.abs(Math.sin((yaw * Math.PI) / 180)) * 0.28;
+      const offsetX = Math.sin((yaw * Math.PI) / 180) * 22;
+      shadowRef.current.style.transform = `translateX(calc(-50% + ${offsetX}px)) scaleX(${stretch})`;
+      shadowRef.current.style.opacity = String(
+        0.28 + Math.abs(Math.sin((pitch * Math.PI) / 180)) * 0.14,
+      );
+    }
+  }, [open, yaw, pitch]);
 
-    const tick = () => {
-      if (!draggingRef.current && Math.abs(velocityRef.current) > 0.02) {
-        yawRef.current += velocityRef.current;
-        velocityRef.current *= 0.94;
-        setYaw(yawRef.current);
-      } else if (!draggingRef.current) {
-        velocityRef.current = 0;
-      }
-
-      if (orbitRef.current) {
-        orbitRef.current.style.transform = `rotateX(${pitchRef.current}deg) rotateY(${yawRef.current}deg)`;
-      }
-      if (shadowRef.current) {
-        const stretch = 1 + Math.abs(Math.sin((yawRef.current * Math.PI) / 180)) * 0.22;
-        const offsetX = Math.sin((yawRef.current * Math.PI) / 180) * 18;
-        shadowRef.current.style.transform = `translateX(calc(-50% + ${offsetX}px)) scaleX(${stretch})`;
-        shadowRef.current.style.opacity = String(0.34 + Math.abs(Math.sin((pitchRef.current * Math.PI) / 180)) * 0.12);
-      }
-      rafRef.current = requestAnimationFrame(tick);
-    };
-
-    rafRef.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(rafRef.current);
-  }, [open]);
+  function applyOrientation(nextYaw: number, nextPitch: number) {
+    yawRef.current = nextYaw;
+    pitchRef.current = nextPitch;
+    setYaw(nextYaw);
+    setPitch(nextPitch);
+  }
 
   function nudge(direction: -1 | 1) {
-    velocityRef.current = 0;
-    yawRef.current += direction * ANGLE_STEP;
-    setYaw(yawRef.current);
+    applyOrientation(yawRef.current + direction * ANGLE_STEP, pitchRef.current);
   }
 
   function onStagePointerDown(event: ReactPointerEvent<HTMLDivElement>) {
@@ -98,28 +86,19 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
     const target = event.currentTarget;
     target.setPointerCapture(event.pointerId);
     draggingRef.current = true;
-    velocityRef.current = 0;
 
     const startX = event.clientX;
     const startY = event.clientY;
     const originYaw = yawRef.current;
     const originPitch = pitchRef.current;
-    let lastX = startX;
-    let lastT = performance.now();
 
     function onMove(ev: PointerEvent) {
-      const now = performance.now();
       const dx = ev.clientX - startX;
       const dy = ev.clientY - startY;
-      yawRef.current = originYaw + dx * 0.42;
-      pitchRef.current = Math.max(-38, Math.min(18, originPitch - dy * 0.26));
-      setYaw(yawRef.current);
-      setPitch(pitchRef.current);
-
-      const dt = Math.max(16, now - lastT);
-      velocityRef.current = ((ev.clientX - lastX) / dt) * 15;
-      lastX = ev.clientX;
-      lastT = now;
+      applyOrientation(
+        originYaw + dx * 0.4,
+        Math.max(-42, Math.min(22, originPitch - dy * 0.28)),
+      );
     }
 
     function onUp() {
@@ -199,7 +178,7 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
           <Chevron direction="right" />
         </button>
 
-        <p className="box-viewer__hint">Girala para ver frente y dorso</p>
+        <p className="box-viewer__hint">Caja 3D · deslizá para girar</p>
       </div>
     </dialog>
   );
@@ -227,13 +206,13 @@ type BoxProps = {
   textures: ProductBoxTextures;
 };
 
-/** Caja retail con foto real al frente, laterales y solapa colgante. */
+/** Prisma rectangular con 6 caras + solapa: geometría de caja, no una foto girando. */
 function ProductBox3D({ width: w, height: h, depth: d, textures }: BoxProps) {
   const halfD = d / 2;
   const halfW = w / 2;
   const halfH = h / 2;
-  const tabH = Math.round(h * 0.12);
-  const tabW = Math.round(w * 0.72);
+  const tabH = Math.round(h * 0.1);
+  const tabW = Math.round(w * 0.7);
 
   const face = (url: string, extra: CSSProperties = {}): CSSProperties => ({
     backgroundImage: `url(${url})`,
@@ -252,8 +231,8 @@ function ProductBox3D({ width: w, height: h, depth: d, textures }: BoxProps) {
             width: tabW,
             height: tabH,
             left: (w - tabW) / 2,
-            top: -tabH + 2,
-            transform: `translateZ(${-halfD + 1}px)`,
+            top: -tabH + 1,
+            transform: `translateZ(${-halfD + 0.5}px)`,
           })}
         />
       ) : null}
@@ -265,9 +244,7 @@ function ProductBox3D({ width: w, height: h, depth: d, textures }: BoxProps) {
           height: h,
           transform: `translateZ(${halfD}px)`,
         })}
-      >
-        <span className="product-box3d__gloss" />
-      </div>
+      />
       <div
         className="product-box3d__face product-box3d__face--back"
         style={face(textures.back, {
@@ -275,9 +252,7 @@ function ProductBox3D({ width: w, height: h, depth: d, textures }: BoxProps) {
           height: h,
           transform: `rotateY(180deg) translateZ(${halfD}px)`,
         })}
-      >
-        <span className="product-box3d__gloss product-box3d__gloss--soft" />
-      </div>
+      />
       <div
         className="product-box3d__face product-box3d__face--right"
         style={face(textures.right, {
