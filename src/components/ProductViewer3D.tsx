@@ -199,7 +199,7 @@ export function ProductViewer3D({ product, open, onClose }: Props) {
           <Chevron direction="right" />
         </button>
 
-        <p className="box-viewer__hint">Arrastrá para girar · producto real</p>
+        <p className="box-viewer__hint">Girala para ver frente y dorso</p>
       </div>
     </dialog>
   );
@@ -238,7 +238,7 @@ function ProductBox3D({ width: w, height: h, depth: d, textures }: BoxProps) {
   const face = (url: string, extra: CSSProperties = {}): CSSProperties => ({
     backgroundImage: `url(${url})`,
     backgroundRepeat: "no-repeat",
-    backgroundSize: "cover",
+    backgroundSize: "100% 100%",
     backgroundPosition: "center",
     ...extra,
   });
@@ -275,7 +275,9 @@ function ProductBox3D({ width: w, height: h, depth: d, textures }: BoxProps) {
           height: h,
           transform: `rotateY(180deg) translateZ(${halfD}px)`,
         })}
-      />
+      >
+        <span className="product-box3d__gloss product-box3d__gloss--soft" />
+      </div>
       <div
         className="product-box3d__face product-box3d__face--right"
         style={face(textures.right, {

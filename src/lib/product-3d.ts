@@ -17,15 +17,17 @@ export type ProductBoxTextures = {
 };
 
 const FILGO_PINTO_FRONT = "/products/filgo-pinto-front.jpg";
-const FILGO_PINTO_SIDE = "/products/filgo-pinto-side.jpg";
+const FILGO_PINTO_BACK = "/products/filgo-pinto-back.jpg";
+const FILGO_PINTO_SIDE_LEFT = "/products/filgo-pinto-side-left.jpg";
+const FILGO_PINTO_SIDE_RIGHT = "/products/filgo-pinto-side-right.jpg";
 const FILGO_PINTO_EDGE = "/products/filgo-pinto-edge.jpg";
 const FILGO_PINTO_TAB = "/products/filgo-pinto-tab.jpg";
 
 /** Caja Filgo Pinto real: alta, angosta y fina (pack colgante). */
 export const FILGO_PINTO_BOX: BoxSize = {
-  width: 176,
-  height: 448,
-  depth: 26,
+  width: 180,
+  height: 454,
+  depth: 28,
 };
 
 export function isFilgoPintoBox(product: Product) {
@@ -54,9 +56,9 @@ export function texturesForProduct(product: Product): ProductBoxTextures | null 
   if (isFilgoPintoBox(product)) {
     return {
       front: FILGO_PINTO_FRONT,
-      back: FILGO_PINTO_FRONT,
-      left: FILGO_PINTO_SIDE,
-      right: FILGO_PINTO_SIDE,
+      back: FILGO_PINTO_BACK,
+      left: FILGO_PINTO_SIDE_LEFT,
+      right: FILGO_PINTO_SIDE_RIGHT,
       top: FILGO_PINTO_EDGE,
       bottom: FILGO_PINTO_EDGE,
       tab: FILGO_PINTO_TAB,
